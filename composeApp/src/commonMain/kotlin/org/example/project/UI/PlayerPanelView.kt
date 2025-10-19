@@ -9,18 +9,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import org.example.models.Player
 
-class PlayerPanelView {
-
-    @Composable
-    fun PlayerHand(player: Player){
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally)
-        {
-            Text("Twoje karty", style = MaterialTheme.typography.titleLarge)
-            Row{
-                player.hand.forEach{card ->
-                    CardsView().CardView(card, Modifier.weight(1f))
-                }
+@Composable
+fun PlayerHand(player: Player) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    )
+    {
+        Text("Twoje karty", style = MaterialTheme.typography.titleLarge)
+        Row {
+            player.hand.forEach { card ->
+                CardView(card, Modifier.weight(1f))
             }
         }
     }

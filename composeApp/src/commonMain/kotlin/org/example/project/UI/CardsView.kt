@@ -18,51 +18,49 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 
-class CardsView {
-
-    @Composable
-    fun CardView(card: Card, modifier: Modifier) {
-        Box(
-            modifier = modifier
-                .padding(8.dp)
-                .width(120.dp)
-                .height(180.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)),
-            contentAlignment = Alignment.Center
+@Composable
+fun CardView(card: Card, modifier: Modifier) {
+    Box(
+        modifier = modifier
+            .padding(8.dp)
+            .width(60.dp)
+            .height(120.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                modifier = Modifier.padding(8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text("Nr ${card.number}", style = MaterialTheme.typography.labelLarge)
-                Spacer(Modifier.height(8.dp))
-                Text(card.name, style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-                Text(card.description)
-            }
+            Text("Nr ${card.number}", style = MaterialTheme.typography.labelLarge)
+            Spacer(Modifier.height(8.dp))
+            Text(card.name, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+            Text(card.description)
         }
     }
+}
 
-    @Composable
-    fun HiddenCardView(playerName: String, modifier: Modifier=Modifier) {
-        Box(
-            modifier = modifier
-                .padding(8.dp)
-                .width(120.dp)
-                .height(180.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.secondaryContainer),
-            contentAlignment = Alignment.Center
-        ){
-            Column (
-                horizontalAlignment = Alignment.CenterHorizontally
-            ){
-                Text("?", style = MaterialTheme.typography.headlineLarge)
-                Spacer(Modifier.height(8.dp))
-                Text(playerName, style = MaterialTheme.typography.bodySmall)
-            }
+@Composable
+fun HiddenCardView(playerName: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .padding(8.dp)
+            .width(80.dp)
+            .height(120.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(Modifier.height(8.dp))
+            Text(playerName, style = MaterialTheme.typography.bodySmall)
+            Text("Zagrane karty:")
         }
     }
 }
