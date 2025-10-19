@@ -3,7 +3,6 @@ package org.example
 
 import io.ktor.client.call.*
 import io.ktor.client.plugins.websocket.webSocket
-import io.ktor.client.plugins.websocket.ws
 import io.ktor.client.request.*
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
@@ -23,26 +22,29 @@ class ApiService(private val baseUrl: String = "http://10.0.2.2:8080") {
 
     suspend fun ping(): String {
         return try {
-            val response: HttpResponse  = client.get("$baseUrl/")
+            val response: HttpResponse = client.get("$baseUrl/")
             response.bodyAsText()
         } catch (e: Exception) {
             "brak połączenia $e"
         }
     }
 
-    suspend fun connectToUpdates(onEvent : (GameEvent) -> Unit){
+    suspend fun connectToUpdates(onEvent: (GameEvent) -> Unit) {
         client.webSocket(
-            urlString = baseUrl.replace("http", "ws") + "/updates"
-        ){
+            urlString = baseUrl.replace("https", "wss") + "/updates"
+        ) {
             println("Połączono z WebSocket!")
 
-            for(frame in incoming){
-                val text = (frame as? Frame.Text)?.readText() ?: ""
-                try{
+            for (frame in incoming) {
+
+                val text = (frame as? Frame.Text)?.readText() ?: "Brak.."
+                println("Odebrano event: $text")
+                try {
                     val event = Json.decodeFromString<GameEvent>(text)
+                    println("Event: $event")
                     onEvent(event)
 
-                }catch (e: Exception) {
+                } catch (e: Exception) {
                     println("Błąd parsowania eventu: $text   error: $e ")
                 }
             }
@@ -64,10 +66,10 @@ class ApiService(private val baseUrl: String = "http://10.0.2.2:8080") {
         return client.get("$baseUrl/player/$playerId").body()
     }
 
-    suspend fun makeMove(playerId: Int): MoveResult {
+    suspend fun makeMove(playerId: Int, card: Card, targetPlayerId: Int): MoveResult {
         return client.post("$baseUrl/move") {
             contentType(ContentType.Application.Json)
-            setBody(MoveRequest(playerId))
+            setBody(MoveRequest(playerId, card, targetPlayerId))
         }.body()
     }
 
@@ -88,7 +90,7 @@ class ApiService(private val baseUrl: String = "http://10.0.2.2:8080") {
 }
 
 @Serializable
-data class MoveRequest(val playerId: Int)
+data class MoveRequest(val playerId: Int, val card: Card, val targetPlayerId: Int)
 
 @Serializable
 data class MoveResult(
