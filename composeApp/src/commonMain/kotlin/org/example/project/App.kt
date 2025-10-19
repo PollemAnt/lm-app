@@ -2,10 +2,12 @@ package org.example.project
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.LocalAutofillHighlightColor
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -44,11 +46,32 @@ fun App() {
         isConnected = api.ping()
     }
 
+    LaunchedEffect(Unit) {
+        if (player != null) {
+            api.connectToUpdates { event ->
+                when (event.type) {
+                    "player_joined" -> coroutineScope.launch {
+                        gameState = api.getState()
+                    }
+
+                    "card_played" -> coroutineScope.launch {
+                        gameState = api.getState()
+                        println("DRAW CARD")
+                    }
+
+                    "turn_changed" -> coroutineScope.launch {
+                        gameState = api.getState()
+                    }
+                }
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
-            .background(MaterialTheme.colorScheme.primaryContainer)
             .fillMaxSize()
-            .padding(64.dp),
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
 
@@ -56,14 +79,14 @@ fun App() {
 
         if (player == null) {
             var name by remember { mutableStateOf("") }
+
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text("Twoje imię: ") })
             Button(onClick = {
-                CoroutineScope(Dispatchers.Main).launch {
-                    val p = api.join(name)
-                    player = p
+                coroutineScope.launch {
+                    player = api.join(name)
                     gameState = api.getState()
                 }
             }) {
@@ -72,31 +95,6 @@ fun App() {
         } else {
             // ekran gry
             Text("Jesteś: ${player!!.name} (id=${player!!.id})")
-
-            LaunchedEffect(Unit) {
-                api.connectToUpdates { event ->
-                    when (event.type) {
-                        "player_joined" -> {
-                            CoroutineScope(Dispatchers.Main).launch {
-                                gameState = api.getState()
-                            }
-                           // message = "Gracz ${event.player?.name} dołączył do gry"
-
-                        }
-
-                        "draw" -> {
-                           println("DRAW EVENT")
-                        }
-
-                        "move" -> {
-                            CoroutineScope(Dispatchers.Main).launch {
-                                gameState = api.getState()
-                            }
-                        }
-                    }
-                    //message = "brak eventu"
-                }
-            }
 
 
             Text(
@@ -107,10 +105,7 @@ fun App() {
                 }"
             )
 
-            OpponentsArea(
-                currentPlayer = player!!,
-                players = gameState?.players ?: emptyList()
-            )
+            OpponentsArea(currentPlayer = player!!, players = gameState?.players ?: emptyList())
 
             Spacer(Modifier.height(16.dp))
 
@@ -118,44 +113,40 @@ fun App() {
 
             Spacer(Modifier.height(16.dp))
 
-            Button(onClick = {
-                CoroutineScope(Dispatchers.Main).launch {
-                    val res = api.makeMove(player!!.id, card = player!!.hand[0], targetPlayerId = 1)
-                    message = res.ok ?: res.error
-                    gameState = api.getState()
+            Row {
+                Button(onClick = {
+                    CoroutineScope(Dispatchers.Main).launch {
+                        val res =
+                            api.makeMove(player!!.id, card = player!!.hand[0], targetPlayerId = 1)
+                        message = res.ok ?: res.error
+                        gameState = api.getState()
+                    }
+                }) {
+                    Text("Wykonaj ruch")
                 }
-            }) {
-                Text("Wykonaj ruch")
+
+                Spacer(Modifier.height(16.dp))
+
+                Button(onClick = {
+                    CoroutineScope(Dispatchers.Main).launch {
+                        val card = api.drawCard(player!!.id)
+                        message = "Dobrałeś kartę: ${card.name}"
+                        val hand = api.getHand(player!!.id)
+                        player = player!!.copy(hand = hand)
+                    }
+                }) {
+                    Text("Dobierz kartę")
+                }
             }
 
             Spacer(Modifier.height(16.dp))
-
-            Button(onClick = {
-                CoroutineScope(Dispatchers.Main).launch {
-                    val card = api.drawCard(player!!.id)
-                    message = "Dobrałeś kartę: ${card.name}"
-                    val hand = api.getHand(player!!.id)
-                    player = player!!.copy(hand = hand)
-                }
-            }) {
-                Text("Dobierz kartę")
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // Wyświetlanie kart w ręce
-            Text("Twoje karty:")
-            player?.hand?.forEach { card ->
-                Text(" - ${card.name} (${card.number}): ${card.description}")
-            }
-
-            //message?.let { Text(it) }
 
             Button(onClick = {
                 CoroutineScope(Dispatchers.Main).launch { api.getReset() }
             }) {
                 Text("Reset")
             }
+            message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
         }
     }
 }
