@@ -11,7 +11,7 @@ import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.example.models.GameEvent
+import org.example.models.GameEventBase
 import org.example.models.GameSnapshot
 import org.example.models.Player
 import org.example.models.PlayerJoinRequest
@@ -29,7 +29,7 @@ class ApiService(private val baseUrl: String = "http://10.0.2.2:8080") {
         }
     }
 
-    suspend fun connectToUpdates(onEvent: (GameEvent) -> Unit) {
+    suspend fun connectToUpdates(onEvent: (GameEventBase) -> Unit) {
         client.webSocket(
             urlString = baseUrl.replace("https", "wss") + "/updates"
         ) {
@@ -40,7 +40,7 @@ class ApiService(private val baseUrl: String = "http://10.0.2.2:8080") {
                 val text = (frame as? Frame.Text)?.readText() ?: "Brak.."
                 println("Odebrano event: $text")
                 try {
-                    val event = Json.decodeFromString<GameEvent>(text)
+                    val event = Json.decodeFromString<GameEventBase>(text)
                     println("Event: $event")
                     onEvent(event)
 
