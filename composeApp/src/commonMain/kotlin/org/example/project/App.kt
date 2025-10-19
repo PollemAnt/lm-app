@@ -19,108 +19,30 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.example.ApiService
 import org.example.models.GameSnapshot
 import org.example.models.Player
 import org.example.project.UI.OpponentsArea
-import org.example.project.UI.PlayerPanelView
-import org.jetbrains.compose.ui.tooling.preview.Preview
+import org.example.project.UI.PlayerHand
 
 @Composable
-@Preview
 fun App() {
-    /*
-    MaterialTheme {
-        val scope = rememberCoroutineScope()
-        val api = remember { ApiService("http://192.168.1.24:8080") }
-        var state by remember { mutableStateOf<GameSnapshot?>(null) }
-        var result by remember { mutableStateOf<Map<String,Any>?>(null) }
-        var error by remember { mutableStateOf<String?>(null) }
 
-        Column(
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Button(onClick = {
-                scope.launch {
-                    try {
-                        state = api.getState()
-                        error = null
-                    } catch (e: Exception) {
-                        error = e.message
-                    }
-                }
-            }) {
-                Text("Pobierz stan gry")
-            }
-            Button(onClick = {
-                scope.launch {
-                    try {
-                        result = api.makeMove(playerId = 1 )
-                        error = null
-                    } catch (e: Exception) {
-                        error = e.message
-                    }
-                }
-            }) {
-                Text("Zrób ruch")
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            error?.let {
-                Text("Błąd: $it", color = MaterialTheme.colorScheme.error)
-            }
-
-            state?.let {
-                Text("Aktywny gracz ID: ${it.activePlayerId}")
-                Spacer(Modifier.height(8.dp))
-                it.players.forEach { p ->
-                    Text("Gracz ${p.id}: ${p.name}")
-                }
-            }
-            result?.let{
-                Text("Move result keys: ${it.keys}")
-                Spacer(Modifier.height(8.dp))
-                Text("Move result values: ${it.values}")
-            }
-        }
-    }*/
     val api = remember { ApiService("https://lm-serwer.onrender.com") }
+    val coroutineScope = rememberCoroutineScope()
+
     var player by remember { mutableStateOf<Player?>(null) }
     var gameState by remember { mutableStateOf<GameSnapshot?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
-
     var isConnected by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         isConnected = api.ping()
     }
-
-    /*LaunchedEffect(player) {
-        if (player != null) {
-            while (true) {
-                try {
-                    val snapshot = api.getState()
-                    gameState = snapshot
-                    val updatedPlayer = api.getPlayer(player!!.id)
-                    player = updatedPlayer
-                } catch (e: Exception) {
-                    println("Błąd synchronizacji: $e")
-                }
-                delay(2000) // 2 sekundy
-            }
-        }
-    }*/
 
     Column(
         modifier = Modifier
@@ -130,14 +52,14 @@ fun App() {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
 
-        Text(isConnected ?: "nnnnnnnna")
+        Text(isConnected ?: "Brak polaczenia z serwerem")
 
         if (player == null) {
             var name by remember { mutableStateOf("") }
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Twoje imię") })
+                label = { Text("Twoje imię: ") })
             Button(onClick = {
                 CoroutineScope(Dispatchers.Main).launch {
                     val p = api.join(name)
@@ -158,27 +80,21 @@ fun App() {
                             CoroutineScope(Dispatchers.Main).launch {
                                 gameState = api.getState()
                             }
+                           // message = "Gracz ${event.player?.name} dołączył do gry"
+
                         }
 
-                        "card_draw" -> {
-                            if (event.player?.id == player?.id) {
-                                CoroutineScope(Dispatchers.Main).launch {
-                                    player = api.getPlayer(player!!.id)
-                                }
-                            } else {
-                                CoroutineScope(Dispatchers.Main).launch {
-                                    gameState = api.getState()
-                                }
-
-                            }
+                        "draw" -> {
+                           println("DRAW EVENT")
                         }
 
-                        "turn_changed" -> {
+                        "move" -> {
                             CoroutineScope(Dispatchers.Main).launch {
                                 gameState = api.getState()
                             }
                         }
                     }
+                    //message = "brak eventu"
                 }
             }
 
@@ -191,20 +107,20 @@ fun App() {
                 }"
             )
 
-            OpponentsArea().OpponentsArea(
+            OpponentsArea(
                 currentPlayer = player!!,
                 players = gameState?.players ?: emptyList()
             )
 
             Spacer(Modifier.height(16.dp))
 
-            PlayerPanelView().PlayerHand(player!!)
+            PlayerHand(player!!)
 
             Spacer(Modifier.height(16.dp))
 
             Button(onClick = {
                 CoroutineScope(Dispatchers.Main).launch {
-                    val res = api.makeMove(player!!.id)
+                    val res = api.makeMove(player!!.id, card = player!!.hand[0], targetPlayerId = 1)
                     message = res.ok ?: res.error
                     gameState = api.getState()
                 }
@@ -233,7 +149,13 @@ fun App() {
                 Text(" - ${card.name} (${card.number}): ${card.description}")
             }
 
-            message?.let { Text(it) }
+            //message?.let { Text(it) }
+
+            Button(onClick = {
+                CoroutineScope(Dispatchers.Main).launch { api.getReset() }
+            }) {
+                Text("Reset")
+            }
         }
     }
 }
