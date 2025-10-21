@@ -11,10 +11,16 @@ import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import org.example.models.CardPlayedEvent
 import org.example.models.GameEventBase
 import org.example.models.GameSnapshot
 import org.example.models.Player
+import org.example.models.PlayerJoinEvent
 import org.example.models.PlayerJoinRequest
+import org.example.models.TurnChangedEvent
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.polymorphic
+import kotlinx.serialization.modules.subclass
 
 class ApiService(private val baseUrl: String = "http://10.0.2.2:8080") {
 
@@ -40,7 +46,7 @@ class ApiService(private val baseUrl: String = "http://10.0.2.2:8080") {
                 val text = (frame as? Frame.Text)?.readText() ?: "Brak.."
                 println("Odebrano event: $text")
                 try {
-                    val event = Json.decodeFromString<GameEventBase>(text)
+                    val event = json.decodeFromString<GameEventBase>(text)
                     println("Event: $event")
                     onEvent(event)
 
@@ -49,6 +55,21 @@ class ApiService(private val baseUrl: String = "http://10.0.2.2:8080") {
                 }
             }
         }
+    }
+
+    val eventModule = SerializersModule {
+        polymorphic(GameEventBase::class) {
+            subclass(PlayerJoinEvent::class)
+            subclass(CardPlayedEvent::class)
+            subclass(TurnChangedEvent::class)
+        }
+    }
+
+    val json = Json {
+        serializersModule = eventModule
+        classDiscriminator = "type"
+        ignoreUnknownKeys = true
+        isLenient = true
     }
 
     suspend fun join(name: String): Player {
