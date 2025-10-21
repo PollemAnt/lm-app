@@ -1,6 +1,8 @@
 
+import android.content.ClipData
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.draganddrop.dragAndDropSource
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import org.example.Card
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draganddrop.DragAndDropTransferData
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
@@ -77,9 +80,7 @@ fun HiddenCardView(playerName: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun DraggableCard(
-    card: Card,
-    onDropOnOpponent: (opponent: Player) -> Unit,
-    opponents: List<Player>
+    card: Card
 ) {
     var offset by remember { mutableStateOf(Offset.Zero) }
 
@@ -91,18 +92,14 @@ fun DraggableCard(
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surface)
             .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp))
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDrag = { _, dragAmount ->
-                        offset += dragAmount
-                    },
-                    onDragEnd = {
-                        val x = offset.x.roundToInt()
-                        val y = offset.y.roundToInt()
-
-
-                    })
-            },
+            .dragAndDropSource(
+                transferData = {
+                    DragAndDropTransferData(
+                        clipData = ClipData.newPlainText("card",card.id.toString()),
+                        println("XXX dragAndDropSource card ${card.id} ${card.name}")
+                    )
+                }
+            ),
         contentAlignment = Alignment . Center
     ){
         Column(horizontalAlignment = Alignment.CenterHorizontally) {

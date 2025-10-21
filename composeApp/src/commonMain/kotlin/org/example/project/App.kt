@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.LocalAutofillHighlightColor
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -26,10 +25,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.example.ApiService
+import org.example.models.CardPlayedEvent
 import org.example.models.GameSnapshot
 import org.example.models.Player
-import org.example.project.UI.OpponentsArea
-import org.example.project.UI.PlayerHand
+import org.example.models.PlayerJoinEvent
+import org.example.models.TurnChangedEvent
 
 @Composable
 fun App() {
@@ -47,21 +47,21 @@ fun App() {
     }
 
     LaunchedEffect(Unit) {
-        if (player != null) {
-            api.connectToUpdates { event ->
-                when (event.type) {
-                    "player_joined" -> coroutineScope.launch {
-                        gameState = api.getState()
-                    }
+        api.connectToUpdates { event ->
+            when (event) {
 
-                    "card_played" -> coroutineScope.launch {
-                        gameState = api.getState()
-                        println("DRAW CARD")
-                    }
+                is CardPlayedEvent -> coroutineScope.launch {
+                    gameState = api.getState()
+                    println("DRAW CARD")
+                }
 
-                    "turn_changed" -> coroutineScope.launch {
-                        gameState = api.getState()
-                    }
+                is PlayerJoinEvent -> coroutineScope.launch {
+                    println("PLAYER JOINED")
+                    gameState = api.getState()
+                }
+
+                is TurnChangedEvent -> coroutineScope.launch {
+                    gameState = api.getState()
                 }
             }
         }
@@ -71,11 +71,17 @@ fun App() {
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(16.dp),
+            .padding(top = 64.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
 
         Text(isConnected ?: "Brak polaczenia z serwerem")
+
+        Button(onClick = {
+            CoroutineScope(Dispatchers.Main).launch { api.getReset() }
+        }) {
+            Text("Reset")
+        }
 
         if (player == null) {
             var name by remember { mutableStateOf("") }
@@ -105,17 +111,27 @@ fun App() {
                 }"
             )
 
-            OpponentsArea(currentPlayer = player!!, players = gameState?.players ?: emptyList())
+            //OpponentsArea(currentPlayer = player!!, players = gameState?.players ?: emptyList())
 
             Spacer(Modifier.height(16.dp))
 
-            PlayerHand(player!!)
+           /* PlayerHand(
+                player!!,
+                opponents = gameState?.players?.filter { it.id != player!!.id } ?: emptyList(),
+                onDropCard =
+                    { card, opponent ->
+                        coroutineScope.launch {
+                            val res = api.makeMove(player!!.id, card, opponent.id)
+                            message = res.ok
+                            gameState = api.getState()
+                        }
+                    })*/
 
             Spacer(Modifier.height(16.dp))
 
             Row {
                 Button(onClick = {
-                    CoroutineScope(Dispatchers.Main).launch {
+                    coroutineScope.launch {
                         val res =
                             api.makeMove(player!!.id, card = player!!.hand[0], targetPlayerId = 1)
                         message = res.ok ?: res.error
@@ -128,7 +144,7 @@ fun App() {
                 Spacer(Modifier.height(16.dp))
 
                 Button(onClick = {
-                    CoroutineScope(Dispatchers.Main).launch {
+                    coroutineScope.launch {
                         val card = api.drawCard(player!!.id)
                         message = "Dobrałeś kartę: ${card.name}"
                         val hand = api.getHand(player!!.id)
@@ -141,11 +157,7 @@ fun App() {
 
             Spacer(Modifier.height(16.dp))
 
-            Button(onClick = {
-                CoroutineScope(Dispatchers.Main).launch { api.getReset() }
-            }) {
-                Text("Reset")
-            }
+
             message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
         }
     }

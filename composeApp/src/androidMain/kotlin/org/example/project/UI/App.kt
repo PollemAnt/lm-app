@@ -1,7 +1,6 @@
 package org.example.project.UI
 
-import OpponentsArea
-import PlayerHand
+import PlayerGameArea
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -41,6 +40,7 @@ fun App() {
     }
 
     val player by viewModel.player.collectAsState()
+    val hand by viewModel.hand.collectAsState()
     val gameState by viewModel.gameState.collectAsState()
     val message by viewModel.message.collectAsState()
     val isConnected by viewModel.isConnected.collectAsState()
@@ -93,12 +93,10 @@ fun App() {
                 }"
             )
 
-            OpponentsArea(currentPlayer = player!!, players = gameState?.players ?: emptyList())
-
             Spacer(Modifier.height(16.dp))
 
-            PlayerHand(
-                player!!.id, gameState?.players,
+            PlayerGameArea(
+                player!!.id, hand, gameState?.players,
                 onDropCard =
                     { card, opponent ->
                         viewModel.makeMove(card, opponent)

@@ -18,6 +18,9 @@ class GameViewModel(private val api: ApiService, private val scope: CoroutineSco
     private val _player = MutableStateFlow<Player?>(null)
     val player: StateFlow<Player?> = _player
 
+    private val _hand = MutableStateFlow<List<Card>?>(null)
+    val hand: StateFlow<List<Card>?> = _hand
+
     private val _gameState = MutableStateFlow<GameSnapshot?>(null)
     val gameState: StateFlow<GameSnapshot?> = _gameState
 
@@ -40,6 +43,7 @@ class GameViewModel(private val api: ApiService, private val scope: CoroutineSco
 
                     is CardPlayedEvent -> {
                         _gameState.value = api.getState()
+                        _hand.value = api.getHand(player.value!!.id)
                         println("DRAW CARD")
                     }
 
@@ -78,11 +82,11 @@ class GameViewModel(private val api: ApiService, private val scope: CoroutineSco
 
     fun drawCard() {
         scope.launch {
-            val p = _player.value ?: return@launch
-            val card = api.drawCard(p.id)
+            val player = _player.value ?: return@launch
+            val card = api.drawCard(player.id)
             _message.value = "Dobrałeś kartę: ${card.name}"
-            val hand = api.getHand(p.id)
-            _player.value = p.copy(hand = hand)
+            _hand.value = api.getHand(player.id)
+            //_player.value = player.copy(hand = hand)
         }
     }
 }
