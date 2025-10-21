@@ -1,16 +1,15 @@
 package org.example.models
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.example.Card
 
 @Serializable
-sealed interface GameEventBase {
-    val type: String
-}
+sealed interface GameEventBase
 
 @Serializable
+@SerialName("card_played")
 data class CardPlayedEvent(
-    override val type: String ="card_played",
     val playerId: Int,
     val card: Card,
     val targetPlayerId: Int
@@ -18,14 +17,14 @@ data class CardPlayedEvent(
 
 
 @Serializable
+@SerialName("player_joined")
 data class PlayerJoinEvent(
-    override val type: String = "player_joined",
     val player: Player
 ) : GameEventBase
 
 
 @Serializable
+@SerialName("turn_changed")
 data class TurnChangedEvent(
-    override val type: String = "turn_changed",
     val activePlayerId: Int
 ) : GameEventBase
