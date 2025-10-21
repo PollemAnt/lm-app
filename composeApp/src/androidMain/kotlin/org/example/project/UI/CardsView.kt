@@ -1,22 +1,32 @@
-package org.example.project.UI
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import org.example.Card
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import org.example.models.Player
+import kotlin.math.roundToInt
 
 @Composable
 fun CardView(card: Card, modifier: Modifier) {
@@ -64,3 +74,44 @@ fun HiddenCardView(playerName: String, modifier: Modifier = Modifier) {
         }
     }
 }
+
+@Composable
+fun DraggableCard(
+    card: Card,
+    onDropOnOpponent: (opponent: Player) -> Unit,
+    opponents: List<Player>
+) {
+    var offset by remember { mutableStateOf(Offset.Zero) }
+
+    Box(
+        modifier = Modifier
+            .offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt()) }
+            .width(80.dp)
+            .height(120.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp))
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDrag = { _, dragAmount ->
+                        offset += dragAmount
+                    },
+                    onDragEnd = {
+                        val x = offset.x.roundToInt()
+                        val y = offset.y.roundToInt()
+
+
+                    })
+            },
+        contentAlignment = Alignment . Center
+    ){
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(card.name, style = MaterialTheme.typography.titleMedium)
+            Text("Nr ${card.number}")
+        }
+    }
+}
+
+
+
+
