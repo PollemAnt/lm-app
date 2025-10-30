@@ -1,7 +1,6 @@
 package org.example.models
 
 import kotlinx.serialization.Serializable
-import org.example.Card
 
 @Serializable
 data class GameSnapshot(

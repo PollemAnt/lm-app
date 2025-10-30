@@ -2,7 +2,6 @@ package org.example.models
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import org.example.Card
 
 @Serializable
 sealed interface GameEventBase
