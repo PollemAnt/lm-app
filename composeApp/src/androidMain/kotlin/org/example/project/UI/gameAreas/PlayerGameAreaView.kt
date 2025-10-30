@@ -8,23 +8,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import org.example.Card
+import org.example.repository.api.Card
 import org.example.models.Player
 
 @Composable
 fun PlayerGameArea(
-    playerId: Int,
+    player: Player,
     hand: List<Card>?,
     players: List<Player>?,
     onDropCard: (card: Card, opponent: Player) -> Unit
 ) {
-    val player = players?.find { it.id == playerId }
 
     println("XXX PlayerHand $player")
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         if (players != null) {
             OpponentsArea(
-                playerId = playerId,
+                playerId = player.id,
                 players = players
             ) { cardId, opponent ->
                 println("cardId $cardId   opponent  $opponent")

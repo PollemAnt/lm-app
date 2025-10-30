@@ -26,31 +26,38 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.example.ApiService
+import org.example.models.GameSnapshot
+import org.example.models.Player
 import org.example.project.viewModel.GameViewModel
-import org.example.project.providePlatformScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import org.example.project.viewModel.GameUiState
 
 @Composable
-fun App() {
-    val viewModel = remember {
-        GameViewModel(
-            ApiService("https://lm-serwer.onrender.com"),
-            providePlatformScope()
-        )
-    }
+fun App(viewModel: GameViewModel = viewModel()) {
 
-    val player by viewModel.player.collectAsState()
-    val hand by viewModel.hand.collectAsState()
-    val gameState by viewModel.gameState.collectAsState()
-    val message by viewModel.message.collectAsState()
-    val isConnected by viewModel.isConnected.collectAsState()
+  /*  val viewModel = remember {
+        GameViewModel(
+            GameRepository(GameApi("https://lm-serwer.onrender.com"))
+        )
+    }*/
 
     val coroutineScope = rememberCoroutineScope()
+    val state by viewModel.uiState.collectAsState()
+
 
     LaunchedEffect(Unit) {
-        viewModel.connect()
+        viewModel.connectToUpdates()
     }
+    viewModel.loadInitialState()
+    GameScreen(viewModel, state, coroutineScope)
+}
 
+@Composable
+private fun GameScreen(
+    viewModel: GameViewModel,
+    state : GameUiState,
+    coroutineScope : CoroutineScope
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -59,44 +66,18 @@ fun App() {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
 
-        Text(isConnected ?: "Brak polaczenia z serwerem")
+        ControlPanel(state.isConnected, viewModel)
 
-        Button(onClick = {
-            CoroutineScope(Dispatchers.Main).launch { viewModel.reset() }
-        }) {
-            Text("Reset")
-        }
+        if (state.player == null) {
+            LoginScreen(coroutineScope, viewModel)
+        } else if (state.gameState != null) {
 
-        if (player == null) {
-            var name by remember { mutableStateOf("") }
-
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Twoje imię: ") })
-            Button(onClick = {
-                coroutineScope.launch {
-                    viewModel.join(name)
-                }
-            }) {
-                Text("Dołącz do gry")
-            }
-        } else if (gameState != null) {
-
-            Text("Jesteś: ${player!!.name} (id=${player!!.id})")
-
-            Text(
-                "Aktywny gracz: ${gameState?.activePlayerId} ${
-                    gameState?.players?.get(
-                        gameState?.activePlayerId!!
-                    )
-                }"
-            )
+            PlayerInformation(state.player, state.gameState)
 
             Spacer(Modifier.height(16.dp))
 
             PlayerGameArea(
-                player!!.id, hand, gameState?.players,
+                state.player, state.player.hand, state.gameState.players,
                 onDropCard =
                     { card, opponent ->
                         viewModel.makeMove(card, opponent)
@@ -105,30 +86,88 @@ fun App() {
 
             Spacer(Modifier.height(16.dp))
 
-            Row {
-                Button(onClick = {
-                    coroutineScope.launch {
-                        player!!.hand.firstOrNull()?.let { card ->
-                            val opponent = gameState?.players?.firstOrNull { it.id != player!!.id }
-                            if (opponent != null) viewModel.makeMove(card, opponent)
-                        }
-                    }
-                }) {
-                    Text("Wykonaj ruch")
-                }
+            ButtonsPanel(coroutineScope, state.player, state.gameState, viewModel)
 
-                Spacer(Modifier.height(16.dp))
+            state.message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+        }
+    }
+}
 
-                Button(onClick = {
-                    viewModel.drawCard()
-                }) {
-                    Text("Dobierz kartę")
+@Composable
+private fun ControlPanel(
+    isConnected: String?,
+    viewModel: GameViewModel
+) {
+    Text(isConnected ?: "Brak polaczenia z serwerem")
+
+    Button(onClick = {
+        CoroutineScope(Dispatchers.Main).launch { viewModel.reset() }
+    }) {
+        Text("Reset")
+    }
+}
+
+@Composable
+private fun PlayerInformation(
+    player: Player,
+    gameState: GameSnapshot
+) {
+    Text("Jesteś: ${player.name} (id=${player.id})")
+
+    Text(
+        "Aktywny gracz: ${gameState.activePlayerId} ${
+            gameState.players.get(
+                gameState.activePlayerId!!
+            )
+        }"
+    )
+}
+
+@Composable
+private fun LoginScreen(
+    coroutineScope: CoroutineScope,
+    viewModel: GameViewModel
+) {
+    var name by remember { mutableStateOf("") }
+
+    OutlinedTextField(
+        value = name,
+        onValueChange = { name = it },
+        label = { Text("Twoje imię: ") })
+    Button(onClick = {
+        coroutineScope.launch {
+            viewModel.join(name)
+        }
+    }) {
+        Text("Dołącz do gry")
+    }
+}
+
+@Composable
+private fun ButtonsPanel(
+    coroutineScope: CoroutineScope,
+    player: Player,
+    gameState: GameSnapshot,
+    viewModel: GameViewModel
+) {
+    Row {
+        Button(onClick = {
+            coroutineScope.launch {
+                player.hand.firstOrNull()?.let { card ->
+                    val opponent = gameState.players.firstOrNull { it.id != player.id }
+                    if (opponent != null) viewModel.makeMove(card, opponent)
                 }
             }
+        }) {
+            Text("Wykonaj ruch")
+        }
 
-            Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
 
-            message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+        Button(onClick = {
+            viewModel.drawCard()
+        }) {
+            Text("Dobierz kartę")
         }
     }
 }
