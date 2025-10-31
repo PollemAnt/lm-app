@@ -2,6 +2,7 @@
 import android.content.ClipData
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.draganddrop.dragAndDropSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,7 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import org.example.repository.api.Card
+import org.example.models.Card
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draganddrop.DragAndDropTransferData
 import androidx.compose.ui.draw.clip
@@ -29,26 +30,20 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 
 @Composable
-fun CardView(card: Card, modifier: Modifier) {
+fun CardView(card: Card) {
     Box(
-        modifier = modifier
-            .padding(8.dp)
+        modifier = Modifier
             .width(60.dp)
-            .height(120.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)),
+            .height(90.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+            .padding(2.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text("Nr ${card.number}", style = MaterialTheme.typography.labelLarge)
-            Spacer(Modifier.height(8.dp))
-            Text(card.name, style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            Text(card.description)
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(card.name, style = MaterialTheme.typography.bodySmall)
+            Text("Nr ${card.number}", style = MaterialTheme.typography.labelSmall)
         }
     }
 }
@@ -97,15 +92,45 @@ fun DraggableCard(
                     )
                 }
             ),
-        contentAlignment = Alignment . Center
+        contentAlignment = Alignment.TopCenter
     ){
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(card.name, style = MaterialTheme.typography.bodyLarge)
+            Text("${card.number}")
+        }
+    }
+}
+
+@Composable
+fun ClickableCard(
+    card: Card,
+    isSelected: Boolean,
+    onCardClicked: () -> Unit
+) {
+    val backgroundColor = if (isSelected) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+
+    Box(
+        modifier = Modifier
+            .width(80.dp)
+            .height(120.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(backgroundColor)
+            .border(
+                2.dp,
+                if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                RoundedCornerShape(16.dp)
+            )
+            .clickable { onCardClicked() }
+            .padding(4.dp),
+        contentAlignment = Alignment.Center
+    ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(card.name, style = MaterialTheme.typography.titleMedium)
             Text("Nr ${card.number}")
         }
     }
 }
-
-
-
-

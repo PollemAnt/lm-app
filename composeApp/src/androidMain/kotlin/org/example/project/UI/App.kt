@@ -30,16 +30,11 @@ import org.example.models.GameSnapshot
 import org.example.models.Player
 import org.example.project.viewModel.GameViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.example.models.Card
 import org.example.project.viewModel.GameUiState
 
 @Composable
 fun App(viewModel: GameViewModel = viewModel()) {
-
-  /*  val viewModel = remember {
-        GameViewModel(
-            GameRepository(GameApi("https://lm-serwer.onrender.com"))
-        )
-    }*/
 
     val coroutineScope = rememberCoroutineScope()
     val state by viewModel.uiState.collectAsState()
@@ -55,8 +50,8 @@ fun App(viewModel: GameViewModel = viewModel()) {
 @Composable
 private fun GameScreen(
     viewModel: GameViewModel,
-    state : GameUiState,
-    coroutineScope : CoroutineScope
+    state: GameUiState,
+    coroutineScope: CoroutineScope
 ) {
     Column(
         modifier = Modifier
@@ -72,21 +67,19 @@ private fun GameScreen(
             LoginScreen(coroutineScope, viewModel)
         } else if (state.gameState != null) {
 
-            PlayerInformation(state.player, state.gameState)
+            PlayerInformation(state.hand, state.player, state.gameState)
 
             Spacer(Modifier.height(16.dp))
 
             PlayerGameArea(
-                state.player, state.player.hand, state.gameState.players,
-                onDropCard =
+                player = state.player,
+                hand = state.hand,
+                players = state.gameState.players,
+                onPlayCard =
                     { card, opponent ->
                         viewModel.makeMove(card, opponent)
                     }
             )
-
-            Spacer(Modifier.height(16.dp))
-
-            ButtonsPanel(coroutineScope, state.player, state.gameState, viewModel)
 
             state.message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
         }
@@ -109,18 +102,28 @@ private fun ControlPanel(
 
 @Composable
 private fun PlayerInformation(
+    hand: List<Card>,
     player: Player,
     gameState: GameSnapshot
 ) {
     Text("Jesteś: ${player.name} (id=${player.id})")
 
     Text(
-        "Aktywny gracz: ${gameState.activePlayerId} ${
+        "Aktywny gracz: ${
             gameState.players.get(
                 gameState.activePlayerId!!
-            )
-        }"
+            ).name
+        } ID: ${gameState.activePlayerId} "
     )
+
+    /*repeat(hand.size) {
+        Text("${hand.size} Karta: ${hand[it].name}")
+    }
+
+    val played = gameState.players.get(player.id).playedCards
+    repeat(played.size) {
+        Text("zagrana: ${played[it].name}")
+    }*/
 }
 
 @Composable
@@ -152,22 +155,16 @@ private fun ButtonsPanel(
 ) {
     Row {
         Button(onClick = {
-            coroutineScope.launch {
-                player.hand.firstOrNull()?.let { card ->
-                    val opponent = gameState.players.firstOrNull { it.id != player.id }
-                    if (opponent != null) viewModel.makeMove(card, opponent)
-                }
-            }
-        }) {
-            Text("Wykonaj ruch")
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        Button(onClick = {
             viewModel.drawCard()
         }) {
             Text("Dobierz kartę")
+        }
+        Spacer(Modifier.height(16.dp))
+
+        Button(onClick = {
+            viewModel.loadInitialState()
+        }) {
+            Text("aktual")
         }
     }
 }
