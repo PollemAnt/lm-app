@@ -57,7 +57,7 @@ class GameRepository(
         return player
     }
 
-    suspend fun makeMove(playerId: Int, card: Card, targetId: Int): MoveResult {
+    suspend fun makeMove(playerId: Int, card: Card, targetId: Int?): MoveResult {
         val result = api.makeMove(playerId, card, targetId)
         refreshSnapshot()
         return result

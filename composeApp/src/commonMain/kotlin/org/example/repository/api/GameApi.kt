@@ -1,4 +1,4 @@
-package org.example
+package org.example.repository.api
 
 
 import io.ktor.client.call.*
@@ -18,11 +18,13 @@ import org.example.models.Player
 import org.example.models.PlayerJoinEvent
 import org.example.models.PlayerJoinRequest
 import org.example.models.TurnChangedEvent
+import org.example.models.Card
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
+import org.example.NetworkClient
 
-class ApiService(private val baseUrl: String = "http://10.0.2.2:8080") {
+class GameApi(private val baseUrl: String = "https://lm-serwer.onrender.com") {
 
     private val client = NetworkClient.httpClient
 
@@ -35,7 +37,7 @@ class ApiService(private val baseUrl: String = "http://10.0.2.2:8080") {
         }
     }
 
-    suspend fun connectToUpdates(onEvent: (GameEventBase) -> Unit) {
+    suspend fun connectToUpdates(onEvent: suspend (GameEventBase) -> Unit) {
         client.webSocket(
             urlString = baseUrl.replace("https", "wss") + "/updates"
         ) {
@@ -87,7 +89,7 @@ class ApiService(private val baseUrl: String = "http://10.0.2.2:8080") {
         return client.get("$baseUrl/player/$playerId").body()
     }
 
-    suspend fun makeMove(playerId: Int, card: Card, targetPlayerId: Int): MoveResult {
+    suspend fun makeMove(playerId: Int, card: Card, targetPlayerId: Int?): MoveResult {
         return client.post("$baseUrl/move") {
             contentType(ContentType.Application.Json)
             setBody(MoveRequest(playerId, card, targetPlayerId))
@@ -111,7 +113,7 @@ class ApiService(private val baseUrl: String = "http://10.0.2.2:8080") {
 }
 
 @Serializable
-data class MoveRequest(val playerId: Int, val card: Card, val targetPlayerId: Int)
+data class MoveRequest(val playerId: Int, val card: Card, val targetPlayerId: Int?)
 
 @Serializable
 data class MoveResult(
@@ -123,10 +125,3 @@ data class MoveResult(
 @Serializable
 data class DrawRequest(val playerId: Int)
 
-@Serializable
-data class Card(
-    val id: Int,
-    val number: Int,
-    val name: String,
-    val description: String
-)
