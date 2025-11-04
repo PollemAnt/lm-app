@@ -41,6 +41,7 @@ import org.example.project.viewModel.GameViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.example.models.Card
 import org.example.project.UI.gameAreas.dialogs.ChancellorCardSelectionDialog
+import org.example.project.UI.gameAreas.dialogs.NumberPickerDialog
 import org.example.project.viewModel.GameUiState
 
 @Composable
@@ -49,10 +50,6 @@ fun App(viewModel: GameViewModel = viewModel()) {
     val coroutineScope = rememberCoroutineScope()
     val state by viewModel.uiState.collectAsState()
 
-
-    LaunchedEffect(Unit) {
-        viewModel.connectToUpdates()
-    }
     viewModel.loadInitialState()
     GameScreen(viewModel, state, coroutineScope)
 }
@@ -84,7 +81,7 @@ private fun GameScreen(
             LoginScreen(coroutineScope, viewModel)
         } else if (state.gameState != null) {
 
-            PlayerInformation(state.hand, state.player, state.gameState)
+            PlayerInformation(state.player, state.gameState)
 
             Spacer(Modifier.height(16.dp))
 
@@ -158,7 +155,6 @@ private fun ControlPanel(
 
 @Composable
 private fun PlayerInformation(
-    hand: List<Card>,
     player: Player,
     gameState: GameSnapshot
 ) {
@@ -171,15 +167,6 @@ private fun PlayerInformation(
             ).name
         } ID: ${gameState.activePlayerId} "
     )
-
-    /*repeat(hand.size) {
-        Text("${hand.size} Karta: ${hand[it].name}")
-    }
-
-    val played = gameState.players.get(player.id).playedCards
-    repeat(played.size) {
-        Text("zagrana: ${played[it].name}")
-    }*/
 }
 
 @Composable
@@ -200,66 +187,4 @@ private fun LoginScreen(
     }) {
         Text("Dołącz do gry")
     }
-}
-
-@Composable
-fun NumberPickerDialog(
-    onNumberSelected: (Int) -> Unit,
-    onDismiss: () -> Unit
-) {
-
-    val availableNumbers = listOf(
-        0 to "Szpieg",
-        2 to "Kapłan",
-        3 to "Baron",
-        4 to "Służąca",
-        5 to "Książę",
-        6 to "Kanclerz",
-        7 to "Król",
-        8 to "Hrabina",
-        9 to "Księżniczka"
-    )
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Zgadnij kartę") },
-        text = {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text("Wybierz numer karty:", style = MaterialTheme.typography.bodyMedium)
-
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.height(200.dp)
-                ) {
-                    items(availableNumbers.size) { index ->
-                        val (number, name) = availableNumbers[index]
-                        Box(
-                            modifier = Modifier
-                                .size(60.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.primary)
-                                .clickable { onNumberSelected(number) },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = name,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Anuluj")
-            }
-        }
-    )
 }
