@@ -60,7 +60,6 @@ fun PlayerGameArea(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Ręka gracza
         Text("Twoje karty:", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(8.dp))
         Row(
@@ -85,6 +84,8 @@ fun PlayerBoardArea(
     selectedCard: Card?,
     onCardPlayed: (card: Card) -> Unit
 ) {
+    val canPlayOnBoard = selectedCard?.let { canPlayOnOwnBoard(it) } ?: false
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
@@ -92,13 +93,13 @@ fun PlayerBoardArea(
             .height(140.dp)
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
             .border(
-                width = if (selectedCard != null) 3.dp else 1.dp,
-                color = if (selectedCard != null) MaterialTheme.colorScheme.primary
+                width = if (selectedCard != null && canPlayOnBoard) 3.dp else 1.dp,
+                color = if (selectedCard != null && canPlayOnBoard) MaterialTheme.colorScheme.primary
                 else MaterialTheme.colorScheme.outline,
                 shape = RoundedCornerShape(12.dp)
             )
             .clickable(
-                enabled = selectedCard != null,
+                enabled = selectedCard != null && canPlayOnBoard,
                 onClick = {
                     selectedCard?.let { card ->
                         onCardPlayed(card)
@@ -107,27 +108,40 @@ fun PlayerBoardArea(
             )
             .padding(8.dp)
     ) {
+        if (selectedCard != null) {
+            if (canPlayOnBoard) {
+                Text(
+                    "Kliknij aby zagrać ${selectedCard.name} na planszę",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            } else {
+                Text(
+                    "Nie można zagrać ${selectedCard.name} na planszę",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+
         Text("Twoja plansza", style = MaterialTheme.typography.titleMedium)
 
         if (player.playedCards.isNotEmpty()) {
-            Text("Zagrane karty:", style = MaterialTheme.typography.bodySmall)
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                player.playedCards.forEach { card ->
-                    CardView(card)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Zagrane karty:", style = MaterialTheme.typography.bodySmall)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    player.playedCards.forEach { card ->
+                        CardView(card)
+                    }
                 }
             }
         } else {
             Text("Brak zagranych kart", style = MaterialTheme.typography.bodySmall)
         }
 
-        if (selectedCard != null) {
-            Text(
-                "Kliknij aby zagrać ${selectedCard.name} na planszę",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
+
+
     }
 }

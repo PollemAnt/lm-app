@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CardElevation
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,7 +50,7 @@ fun CardView(card: Card) {
 }
 
 @Composable
-fun HiddenCardView(playerName: String, modifier: Modifier = Modifier) {
+fun CardToSelectionView(modifier: Modifier = Modifier, elevation: CardElevation) {
     Box(
         modifier = modifier
             .padding(8.dp)
@@ -60,13 +61,6 @@ fun HiddenCardView(playerName: String, modifier: Modifier = Modifier) {
             .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp)),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(Modifier.height(8.dp))
-            Text(playerName, style = MaterialTheme.typography.bodySmall)
-            Text("Zagrane karty:")
-        }
     }
 }
 
@@ -107,10 +101,11 @@ fun ClickableCard(
     isSelected: Boolean,
     onCardClicked: () -> Unit
 ) {
-    val backgroundColor = if (isSelected) {
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-    } else {
-        MaterialTheme.colorScheme.surface
+    val canBePlayed = canPlayCard(card)
+    val backgroundColor = when {
+        !canBePlayed -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+        isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+        else -> MaterialTheme.colorScheme.surface
     }
 
     Box(
@@ -121,16 +116,50 @@ fun ClickableCard(
             .background(backgroundColor)
             .border(
                 2.dp,
-                if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                when {
+                    !canBePlayed -> MaterialTheme.colorScheme.error
+                    isSelected -> MaterialTheme.colorScheme.primary
+                    else -> MaterialTheme.colorScheme.outline
+                },
                 RoundedCornerShape(16.dp)
             )
-            .clickable { onCardClicked() }
+            .clickable(
+                enabled = canBePlayed, // Nie można kliknąć kart, których nie można zagrać
+                onClick = onCardClicked
+            )
             .padding(4.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(card.name, style = MaterialTheme.typography.titleMedium)
             Text("Nr ${card.number}")
+            if (!canBePlayed) {
+                Text(
+                    "Nie można zagrać",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
         }
+    }
+}
+
+fun canPlayCard(card: Card): Boolean {
+    return card.number != 9
+}
+
+fun canPlayOnOwnBoard(card: Card): Boolean {
+    return when (card.number) {
+        0, 4, 6, 8 -> true
+        5 -> true
+        else -> false
+    }
+}
+
+fun canPlayOnOpponent(card: Card): Boolean {
+    return when (card.number) {
+        1, 2, 3, 7 -> true
+        5 -> true
+        else -> false
     }
 }
