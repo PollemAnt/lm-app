@@ -1,6 +1,5 @@
 package org.example.repository
 
-import com.example.models.MoveResult
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -71,20 +70,23 @@ class GameRepository(
         card: Card,
         targetId: Int?,
         guessCardNumber: Int?
-    ): MoveResult {
+    ) {
         val result = api.makeMove(playerId, card, targetId, guessCardNumber)
         refreshSnapshot()
-        return result
+
     }
 
-    suspend fun completeChancellorMove(playerId: Int, cardToKeep: Card, targetId: Int?,): MoveResult {
+    suspend fun completeChancellorMove(playerId: Int, cardToKeep: Card, targetId: Int?) {
         val result = api.completeChancellorMove(playerId, cardToKeep, targetId)
         refreshSnapshot()
-        return result
     }
 
     suspend fun refreshSnapshot() {
         _snapshotFlow.value = api.getState()
+    }
+
+    suspend fun onPriestPlayed(targetId: Int): List<Card>? {
+        return api.getPlayerHand(targetId)
     }
 
     suspend fun reset() {

@@ -1,9 +1,6 @@
 package org.example.repository.api
 
 
-import com.example.models.CardPlayedFeedback
-import com.example.models.MoveResponse
-import com.example.models.MoveResult
 import io.ktor.client.HttpClient
 import io.ktor.client.call.*
 import io.ktor.client.plugins.websocket.webSocket
@@ -94,29 +91,24 @@ class GameApi(
         return client.get("$baseUrl/player/$playerId").body()
     }
 
-    private suspend fun handleMoveResponse(response: HttpResponse): MoveResult {
-        return when (response.status) {
-            HttpStatusCode.OK -> {
-                try {
-                    val successResponse = response.body<MoveResponse>()
+    suspend fun getPlayerHand(targetId: Int): List<Card>? {
+        return try {
+            println("[API] Wykonywanie akcji Kapłana na celu ID: $targetId")
+            val response: HttpResponse = client.get("$baseUrl/hand/$targetId")
 
-                    println("[CLIENT] Otrzymano standardową odpowiedź: $successResponse")
-                    MoveResult.Success(
-                        feedback = CardPlayedFeedback.Standard(successResponse.ok),
-                        messageToAll = successResponse.ok,
-                        nextPlayerId = successResponse.nextPlayerId ?: -1
-                    )
-
-                } catch (e: Exception) {
-                    val errorBody = response.bodyAsText()
-                    println("[ERROR] Błąd deserializacji odpowiedzi. Status: ${response.status}, Treść: $errorBody. Wyjątek: ${e.message}")
-                    MoveResult.Error("Błąd deserializacji odpowiedzi serwera: ${e.message}")
-                }
+            if (response.status == HttpStatusCode.OK) {
+                val hand = response.body<List<Card>>()
+                println("[API] Otrzymano rękę celu: ${hand.firstOrNull()?.name}")
+                hand
+            } else {
+                println("[API-ERROR] Nie udało się pobrać ręki gracza: ${response.status}")
+                null
             }
-
-            HttpStatusCode.BadRequest -> MoveResult.Error("Nieprawidłowe żądanie: ${response.bodyAsText()}")
-            else -> MoveResult.Error("Błąd serwera: ${response.status.description} - ${response.bodyAsText()}")
+        } catch (e: Exception) {
+            println("[API-ERROR] Wyjątek podczas akcji Kapłana: ${e.message}")
+            null
         }
+
     }
 
     suspend fun makeMove(
@@ -124,27 +116,24 @@ class GameApi(
         card: Card,
         targetPlayerId: Int?,
         guessCardNumber: Int?
-    ): MoveResult {
+    ) {
         val response = client.post("$baseUrl/move") {
             contentType(ContentType.Application.Json)
             setBody(MoveRequest(playerId, card, targetPlayerId, guessCardNumber))
         }
         println("[DEBUG] MoveResponse:  makeMove response: $response")
-        return handleMoveResponse(response)
     }
-
 
     suspend fun completeChancellorMove(
         playerId: Int,
         cardToKeep: Card,
         targetPlayerId: Int?,
-    ): MoveResult {
+    ) {
         val response = client.post("$baseUrl/complete_chancellor") {
             contentType(ContentType.Application.Json)
             setBody(MoveRequest(playerId, cardToKeep, targetPlayerId, null))
         }
         println("[DEBUG] MoveResponse: completeChancellorMove response: $response")
-        return handleMoveResponse(response)
     }
 
 
@@ -155,10 +144,6 @@ class GameApi(
         }
 
         return response.body()
-    }
-
-    suspend fun getHand(playerId: Int): List<Card> {
-        return client.get("$baseUrl/hand/$playerId").body()
     }
 
     suspend fun getReset(): HttpStatusCode {

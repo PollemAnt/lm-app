@@ -17,9 +17,6 @@ sealed interface MoveResult {
 }
 
 @Serializable
-data class MoveResponse(val ok: String, val nextPlayerId: Int?)
-
-@Serializable
 sealed class CardPlayedFeedback {
 
     @Serializable
@@ -60,7 +57,7 @@ sealed class CardPlayedFeedback {
     data class PrincePlayed(val playerId: Int, val targetId: Int) : CardPlayedFeedback()
 
     @Serializable
-    data class ChancellorPlayed(val playerId: Int, val availableCards: List<Card>) :
+    data class ChancellorPlayed(val playerId: Int) :
         CardPlayedFeedback()
 
     @Serializable
