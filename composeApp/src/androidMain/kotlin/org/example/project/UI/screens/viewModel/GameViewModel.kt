@@ -4,14 +4,12 @@ package org.example.project.UI.screens.viewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.models.CardPlayedFeedback
-import com.example.models.MoveResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.example.NetworkClient
 import org.example.models.Card
@@ -26,6 +24,12 @@ import org.example.repository.api.GameApi
 @Serializable
 data class ChancellorUIState(
     val availableCards: List<Card>
+)
+
+data class PriestRevealState(
+    val isRevealed: Boolean = false,
+    val targetPlayerName: String = "",
+    val revealedCard: Card? = null
 )
 
 data class GameUiState(
@@ -53,6 +57,13 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     private val _chancellorState = MutableStateFlow<ChancellorUIState?>(null)
     val chancellorState: StateFlow<ChancellorUIState?> = _chancellorState.asStateFlow()
 
+    private val _priestRevealState = MutableStateFlow<PriestRevealState?>(null)
+    val priestRevealState: StateFlow<PriestRevealState?> = _priestRevealState.asStateFlow()
+
+    fun dismissPriestReveal() {
+        _priestRevealState.value = PriestRevealState(isRevealed = false)
+    }
+
     private fun observeEvents() {
         viewModelScope.launch {
             repository.eventsFlow.collect { event ->
@@ -71,14 +82,8 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     }
 
     private fun prepareEventMessage(event: CardPlayedEvent): String {
-        val playerName = getPlayerName(event.playerId)
-        var targetName = getPlayerName(event.targetPlayerId)
-        if(targetName == playerName){
-            targetName = "siebie"
-        }
-        val cardName = event.card.name
-
-        return "Gracz $playerName zagrał kartę $cardName na $targetName."
+        val feedback = event.feedback
+        return createFeedbackMessage(feedback)
     }
 
     init {
@@ -134,12 +139,20 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
                     ChancellorUIState(availableCards = onChancellorPlayed(card, target))
                 println("[DEBUG] _chancellorState.value : ${chancellorState.value}")
                 return@launch
-            }
-            val result = executeMoveInRepository(card, target, guessCardNumber) ?: return@launch
+            } else if (card.number == 2) {
+                val revealedCard = onPriestPlayed(targetId = target?.id ?: return@launch)
 
-            withContext(Dispatchers.Main) {
-                processMoveResult(result)
+                if (revealedCard != null) {
+                    _priestRevealState.value = PriestRevealState(
+                        isRevealed = true,
+                        targetPlayerName = target.name,
+                        revealedCard = revealedCard.first()
+                    )
+                    println("[VM] Ujawniona karta: ${revealedCard.first().name}. Aktualizacja UI.")
+                }
             }
+
+            executeMoveInRepository(card, target, guessCardNumber)
         }
     }
 
@@ -150,35 +163,24 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
         return repository.onChancellorPlayed(player!!.id, card)
     }
 
+    private suspend fun onPriestPlayed(
+        targetId: Int
+    ): List<Card>? {
+        return repository.onPriestPlayed(targetId)
+    }
+
     private suspend fun executeMoveInRepository(
         card: Card,
         target: Player?,
         guessCardNumber: Int?
-    ): MoveResult? {
-        val playerId = _uiState.value.player?.id ?: return null
+    ) {
+        val playerId = _uiState.value.player?.id ?: return
         val targetId = target?.id
         return repository.makeMove(playerId, card, targetId, guessCardNumber)
     }
 
-    private fun processMoveResult(result: MoveResult) {
-        when (result) {
-            is MoveResult.Success -> handleMoveSuccess(result)
-            is MoveResult.Error -> handleMoveError(result)
-        }
-    }
+    private fun createFeedbackMessage(feedback: CardPlayedFeedback): String {
 
-    private fun handleMoveSuccess(result: MoveResult.Success) {
-        println("[DEBUG] Received feedback: ${result.feedback}")
-        _chancellorState.value = null
-        handleMoveFeedback(result.feedback)
-    }
-
-    private fun handleMoveError(result: MoveResult.Error) {
-        _uiState.update { it.copy(message = result.message) }
-        _chancellorState.value = null
-    }
-
-    private fun handleMoveFeedback(feedback: CardPlayedFeedback) {
         val message = when (feedback) {
             is CardPlayedFeedback.Standard -> feedback.message
             is CardPlayedFeedback.GuardPlayed -> {
@@ -193,7 +195,7 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
                         getPlayerName(
                             feedback.targetPlayerId
                         )
-                    }."
+                    }. Zgadywana karta: ${getCardName(feedback.guessedCardNumber)}"
                 }
             }
 
@@ -230,12 +232,26 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
             }: ${feedback.revealedCardNumber}"
 
             is CardPlayedFeedback.SpyPlayed -> "Gracz ${getPlayerName(feedback.spyPlayerId)} użył Szpiega."
+            is CardPlayedFeedback.ChancellorPlayed -> "Gracz ${getPlayerName(feedback.playerId)} zagrał Kanclerza."
+        }
+        return message
+    }
+
+    private fun getCardName(cardNumber: Int): String {
+        return when (cardNumber) {
+            0 -> "Szpieg"
+            2 -> "Kapłan"
+            3 -> "Baron"
+            4 -> "Służąca"
+            5 -> "Książę"
+            6 -> "Kanclerz"
+            7 -> "Król"
+            8 -> "Hrabina"
+            9 -> "Księżniczka"
             else -> {
-                println("[DEBUG] Otrzymano nieobsługiwany feedback: $feedback")
-                "Otrzymano nieznany rezultat ruchu."
+                "Nieznana karta"
             }
         }
-        _uiState.update { it.copy(message = message) }
     }
 
 
@@ -246,18 +262,7 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
             try {
                 println("[DEBUG] Chancellor completeChancellorMove cardToKeep: $cardToKeep")
 
-                val result = repository.completeChancellorMove(playerId, cardToKeep, playerId)
-
-                println("[DEBUG] Chancellor completeChancellorMove result: $result")
-                when (result) {
-                    is MoveResult.Success -> {
-                        _uiState.update { it.copy(message = result.messageToAll) }
-                    }
-
-                    is MoveResult.Error -> {
-                        _uiState.update { it.copy(message = result.message) }
-                    }
-                }
+                repository.completeChancellorMove(playerId, cardToKeep, playerId)
 
                 _chancellorState.value = null
                 repository.refreshSnapshot()

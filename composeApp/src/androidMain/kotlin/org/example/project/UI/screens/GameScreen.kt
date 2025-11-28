@@ -22,8 +22,9 @@ import org.example.models.Card
 import org.example.models.Player
 import org.example.project.UI.components.ControlPanel
 import org.example.project.UI.components.PlayerInformation
-import org.example.project.UI.components.dialogs.ChancellorCardSelectionDialog
-import org.example.project.UI.components.dialogs.NumberPickerDialog
+import org.example.project.UI.screens.dialogs.ChancellorCardSelectionDialog
+import org.example.project.UI.screens.dialogs.NumberPickerDialog
+import org.example.project.UI.screens.dialogs.PriestRevealDialog
 import org.example.project.UI.screens.viewModel.GameViewModel
 
 @Composable
@@ -32,6 +33,7 @@ fun GameScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val chancellorState by viewModel.chancellorState.collectAsState()
+    val priestRevealState by viewModel.priestRevealState.collectAsState()
     var showNumberPickerFor by remember { mutableStateOf<Pair<Card, Player>?>(null) }
 
     Column(
@@ -93,6 +95,14 @@ fun GameScreen(
             availableCards = it.availableCards,
             onCardSelected = { selectedCard -> viewModel.completeChancellorMove(selectedCard) },
             onDismiss = { }
+        )
+    }
+    priestRevealState?.let {
+        PriestRevealDialog(
+            isRevealed = it.isRevealed,
+            targetPlayerName = it.targetPlayerName,
+            revealedCard = it.revealedCard,
+            onDismiss = { viewModel.dismissPriestReveal() }
         )
     }
 }
