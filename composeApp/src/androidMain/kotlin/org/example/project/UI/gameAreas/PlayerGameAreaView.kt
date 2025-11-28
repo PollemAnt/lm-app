@@ -2,16 +2,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +30,8 @@ fun PlayerGameArea(
     onPlayCard: (card: Card, opponent: Player?) -> Unit
 ) {
     var selectedCard by remember { mutableStateOf<Card?>(null) }
+    val opponents = players?.filter { it.id != player.id }
+    val allOpponentsProtected = opponents?.all { it.isProtected }
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         if (players != null) {
@@ -55,7 +54,8 @@ fun PlayerGameArea(
             onCardPlayed = { card ->
                 onPlayCard(card, player)
                 selectedCard = null
-            }
+            },
+            allOpponentsProtected = allOpponentsProtected
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -71,7 +71,8 @@ fun PlayerGameArea(
                     isSelected = selectedCard?.id == card.id,
                     onCardClicked = {
                         selectedCard = if (selectedCard?.id == card.id) null else card
-                    }
+                    },
+                    secondCard = hand.firstOrNull { it.id != card.id }
                 )
             }
         }
@@ -82,16 +83,17 @@ fun PlayerGameArea(
 fun PlayerBoardArea(
     player: Player,
     selectedCard: Card?,
-    onCardPlayed: (card: Card) -> Unit
+    onCardPlayed: (card: Card) -> Unit,
+    allOpponentsProtected: Boolean?
 ) {
-    val canPlayOnBoard = selectedCard?.let { canPlayOnOwnBoard(it) } ?: false
+    val canPlayOnBoard = selectedCard?.let { canPlayOnOwnBoard(it, allOpponentsProtected) } ?: false
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxWidth()
-            .height(140.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            .height(160.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .border(
                 width = if (selectedCard != null && canPlayOnBoard) 3.dp else 1.dp,
                 color = if (selectedCard != null && canPlayOnBoard) MaterialTheme.colorScheme.primary
@@ -140,8 +142,5 @@ fun PlayerBoardArea(
         } else {
             Text("Brak zagranych kart", style = MaterialTheme.typography.bodySmall)
         }
-
-
-
     }
 }
