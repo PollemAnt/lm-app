@@ -53,7 +53,7 @@ fun PlayerGameArea(
             player = player,
             selectedCard = selectedCard,
             onCardPlayed = { card ->
-                onPlayCard(card, null)
+                onPlayCard(card, player)
                 selectedCard = null
             }
         )
