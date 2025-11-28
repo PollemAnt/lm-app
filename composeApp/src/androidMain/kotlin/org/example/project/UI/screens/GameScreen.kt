@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -36,44 +37,49 @@ fun GameScreen(
     val priestRevealState by viewModel.priestRevealState.collectAsState()
     var showNumberPickerFor by remember { mutableStateOf<Pair<Card, Player>?>(null) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(top = 64.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.primaryContainer)
+                .padding(top = 64.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
 
-        state.gameState?.let { gameState ->
-            ControlPanel(
-                connectionStatus = state.isConnected ?: "Brak połączenia z serwerem",
-                onReset = { viewModel.reset() }
-            )
+            state.gameState?.let { gameState ->
+                ControlPanel(
+                    connectionStatus = state.isConnected ?: "Brak połączenia z serwerem",
+                    onReset = { viewModel.reset() }
+                )
 
-            PlayerInformation(
-                player = state.player!!,
-                gameState = gameState
-            )
+                PlayerInformation(
+                    player = state.player!!,
+                    gameState = gameState
+                )
 
-            Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(16.dp))
 
-            PlayerGameArea(
-                player = state.player!!,
-                hand = state.hand,
-                players = gameState.players,
-                onPlayCard = { card, opponent ->
-                    if (card.number == 1 && opponent != null) {
-                        showNumberPickerFor = card to opponent
-                    } else {
-                        viewModel.makeMove(card, opponent, null)
+                PlayerGameArea(
+                    player = state.player!!,
+                    hand = state.hand,
+                    players = gameState.players,
+                    onPlayCard = { card, opponent ->
+                        if (card.number == 1 && opponent != null && opponent.id != state.player?.id) {
+                            showNumberPickerFor = card to opponent
+                        } else {
+                            viewModel.makeMove(card, opponent, null)
+                        }
                     }
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                state.message?.let {
+                    Text(it, color = MaterialTheme.colorScheme.primary)
                 }
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            state.message?.let {
-                Text(it, color = MaterialTheme.colorScheme.primary)
             }
         }
     }
