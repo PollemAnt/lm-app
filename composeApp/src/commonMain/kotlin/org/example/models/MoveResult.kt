@@ -1,6 +1,68 @@
-package org.example.models
+package com.example.models
 
 import kotlinx.serialization.Serializable
+import org.example.models.Card
 
 @Serializable
-data class MoveResult(val ok: String? = null, val error: String? = null, val nextPlayerId: Int? = null)
+sealed interface MoveResult {
+    @Serializable
+    data class Success(
+        val feedback: CardPlayedFeedback,
+        val messageToAll: String,
+        val nextPlayerId: Int,
+    ) : MoveResult
+
+    @Serializable
+    data class Error(val message: String) : MoveResult
+}
+
+@Serializable
+data class MoveResponse(val ok: String, val nextPlayerId: Int?)
+
+@Serializable
+sealed class CardPlayedFeedback {
+
+    @Serializable
+    data class Standard(val message: String) : CardPlayedFeedback()
+
+    @Serializable
+    data class SpyPlayed(
+        val spyPlayerId: Int
+    ) : CardPlayedFeedback()
+
+    @Serializable
+    data class GuardPlayed(
+        val guessingPlayerId: Int,
+        val targetPlayerId: Int,
+        val guessedCardNumber: Int,
+        val wasCorrect: Boolean
+    ) : CardPlayedFeedback()
+
+    @Serializable
+    data class PriestPlayed(
+        val viewingPlayerId: Int,
+        val targetPlayerId: Int,
+        val revealedCardNumber: Int
+    ) : CardPlayedFeedback()
+
+    @Serializable
+    data class BaronPlayed(
+        val player1Id: Int,
+        val player2Id: Int,
+        val winnerId: Int?,
+        val loserId: Int?
+    ) : CardPlayedFeedback()
+
+    @Serializable
+    data class HandmaidPlayed(val protectedPlayerId: Int) : CardPlayedFeedback()
+
+    @Serializable
+    data class PrincePlayed(val playerId: Int, val targetId: Int) : CardPlayedFeedback()
+
+    @Serializable
+    data class ChancellorPlayed(val playerId: Int, val availableCards: List<Card>) :
+        CardPlayedFeedback()
+
+    @Serializable
+    data class KingPlayed(val player1Id: Int, val player2Id: Int) : CardPlayedFeedback()
+}

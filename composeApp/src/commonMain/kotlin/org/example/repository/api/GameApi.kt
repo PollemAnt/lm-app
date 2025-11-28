@@ -1,6 +1,10 @@
 package org.example.repository.api
 
 
+import com.example.models.CardPlayedFeedback
+import com.example.models.MoveResponse
+import com.example.models.MoveResult
+import io.ktor.client.HttpClient
 import io.ktor.client.call.*
 import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.request.*
@@ -24,9 +28,10 @@ import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
 import org.example.NetworkClient
 
-class GameApi(private val baseUrl: String = "https://lm-serwer.onrender.com") {
-
-    private val client = NetworkClient.httpClient
+class GameApi(
+    private val client: HttpClient = NetworkClient.httpClient,
+    private val baseUrl: String = "https://lm-serwer.onrender.com"
+) {
 
     suspend fun ping(): String {
         return try {
@@ -46,14 +51,14 @@ class GameApi(private val baseUrl: String = "https://lm-serwer.onrender.com") {
             for (frame in incoming) {
 
                 val text = (frame as? Frame.Text)?.readText() ?: "Brak.."
-                println("Odebrano event: $text")
+                println("[EVENT] API Odebrano event: $text")
                 try {
                     val event = json.decodeFromString<GameEventBase>(text)
-                    println("Event: $event")
+                    println("[EVENT] API Event: $event")
                     onEvent(event)
 
                 } catch (e: Exception) {
-                    println("Błąd parsowania eventu: $text   error: $e ")
+                    println("[EVENT] API Błąd parsowania eventu: $text  error: $e ")
                 }
             }
         }
@@ -89,18 +94,67 @@ class GameApi(private val baseUrl: String = "https://lm-serwer.onrender.com") {
         return client.get("$baseUrl/player/$playerId").body()
     }
 
-    suspend fun makeMove(playerId: Int, card: Card, targetPlayerId: Int?): MoveResult {
-        return client.post("$baseUrl/move") {
-            contentType(ContentType.Application.Json)
-            setBody(MoveRequest(playerId, card, targetPlayerId))
-        }.body()
+    private suspend fun handleMoveResponse(response: HttpResponse): MoveResult {
+        return when (response.status) {
+            HttpStatusCode.OK -> {
+                try {
+                    val successResponse = response.body<MoveResponse>()
+
+                    println("[CLIENT] Otrzymano standardową odpowiedź: $successResponse")
+                    MoveResult.Success(
+                        feedback = CardPlayedFeedback.Standard(successResponse.ok),
+                        messageToAll = successResponse.ok,
+                        nextPlayerId = successResponse.nextPlayerId ?: -1
+                    )
+
+                } catch (e: Exception) {
+                    val errorBody = response.bodyAsText()
+                    println("[ERROR] Błąd deserializacji odpowiedzi. Status: ${response.status}, Treść: $errorBody. Wyjątek: ${e.message}")
+                    MoveResult.Error("Błąd deserializacji odpowiedzi serwera: ${e.message}")
+                }
+            }
+
+            HttpStatusCode.BadRequest -> MoveResult.Error("Nieprawidłowe żądanie: ${response.bodyAsText()}")
+            else -> MoveResult.Error("Błąd serwera: ${response.status.description} - ${response.bodyAsText()}")
+        }
     }
 
-    suspend fun drawCard(playerId: Int): Card {
-        return client.post("$baseUrl/draw") {
+    suspend fun makeMove(
+        playerId: Int,
+        card: Card,
+        targetPlayerId: Int?,
+        guessCardNumber: Int?
+    ): MoveResult {
+        val response = client.post("$baseUrl/move") {
             contentType(ContentType.Application.Json)
-            setBody(DrawRequest(playerId))
-        }.body()
+            setBody(MoveRequest(playerId, card, targetPlayerId, guessCardNumber))
+        }
+        println("[DEBUG] MoveResponse:  makeMove response: $response")
+        return handleMoveResponse(response)
+    }
+
+
+    suspend fun completeChancellorMove(
+        playerId: Int,
+        cardToKeep: Card,
+        targetPlayerId: Int?,
+    ): MoveResult {
+        val response = client.post("$baseUrl/complete_chancellor") {
+            contentType(ContentType.Application.Json)
+            setBody(MoveRequest(playerId, cardToKeep, targetPlayerId, null))
+        }
+        println("[DEBUG] MoveResponse: completeChancellorMove response: $response")
+        return handleMoveResponse(response)
+    }
+
+
+    suspend fun drawCardForChancellor(playerId: Int, chancellorCard: Card): List<Card> {
+        val response = client.post("$baseUrl/drawCardForChancellor") {
+            contentType(ContentType.Application.Json)
+            setBody(DrawRequest(playerId, chancellorCard))
+        }
+
+        return response.body()
     }
 
     suspend fun getHand(playerId: Int): List<Card> {
@@ -113,15 +167,12 @@ class GameApi(private val baseUrl: String = "https://lm-serwer.onrender.com") {
 }
 
 @Serializable
-data class MoveRequest(val playerId: Int, val card: Card, val targetPlayerId: Int?)
-
-@Serializable
-data class MoveResult(
-    val ok: String? = null,
-    val error: String? = null,
-    val nextPlayerId: Int? = null
+data class MoveRequest(
+    val playerId: Int,
+    val card: Card,
+    val targetPlayerId: Int?,
+    val guessCardNumber: Int?
 )
 
 @Serializable
-data class DrawRequest(val playerId: Int)
-
+data class DrawRequest(val playerId: Int, val card: Card)

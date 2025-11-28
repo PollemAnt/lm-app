@@ -1,5 +1,7 @@
 package org.example.repository
 
+import com.example.models.MoveResult
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -14,7 +16,6 @@ import org.example.models.GameSnapshot
 import org.example.models.Player
 import org.example.models.PlayerJoinEvent
 import org.example.models.TurnChangedEvent
-import org.example.repository.api.MoveResult
 
 class GameRepository(
     private val api: GameApi
@@ -25,21 +26,29 @@ class GameRepository(
     private val _isConnected = MutableStateFlow<String?>(null)
     val isConnected: StateFlow<String?> = _isConnected
 
-    private val _eventsFlow = MutableSharedFlow<GameEventBase>()
+    private val _eventsFlow = MutableSharedFlow<GameEventBase>(
+        extraBufferCapacity = 64,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     val eventsFlow: SharedFlow<GameEventBase> = _eventsFlow.asSharedFlow()
 
     suspend fun connectToUpdates() {
-        api.connectToUpdates { event ->
-            _eventsFlow.tryEmit(event)
-            when (event) {
-                is CardPlayedEvent,
-                is TurnChangedEvent,
-                is PlayerJoinEvent -> {
-
+        println("[EVENT] Repository: Starting connectToUpdates")
+        try {
+            api.connectToUpdates { event ->
+                println("[EVENT] Repository: Received event from API: ${event::class.simpleName}")
+                _eventsFlow.tryEmit(event)
+                println("[EVENT] Repository: try emit: $event")
+                when (event) {
+                    is CardPlayedEvent,
+                    is TurnChangedEvent,
+                    is PlayerJoinEvent -> {
                         refreshSnapshot()
-
+                    }
                 }
             }
+        } catch (e: Exception) {
+            println("[EVENT] Repository: WebSocket error: ${e.message}")
         }
     }
 
@@ -57,16 +66,21 @@ class GameRepository(
         return player
     }
 
-    suspend fun makeMove(playerId: Int, card: Card, targetId: Int?): MoveResult {
-        val result = api.makeMove(playerId, card, targetId)
+    suspend fun makeMove(
+        playerId: Int,
+        card: Card,
+        targetId: Int?,
+        guessCardNumber: Int?
+    ): MoveResult {
+        val result = api.makeMove(playerId, card, targetId, guessCardNumber)
         refreshSnapshot()
         return result
     }
 
-    suspend fun drawCard(playerId: Int): Card {
-        val card = api.drawCard(playerId)
+    suspend fun completeChancellorMove(playerId: Int, cardToKeep: Card, targetId: Int?,): MoveResult {
+        val result = api.completeChancellorMove(playerId, cardToKeep, targetId)
         refreshSnapshot()
-        return card
+        return result
     }
 
     suspend fun refreshSnapshot() {
@@ -76,5 +90,12 @@ class GameRepository(
     suspend fun reset() {
         api.getReset()
         refreshSnapshot()
+    }
+
+    suspend fun onChancellorPlayed(
+        playerId: Int,
+        card: Card,
+    ): List<Card> {
+        return api.drawCardForChancellor(playerId, card)
     }
 }
