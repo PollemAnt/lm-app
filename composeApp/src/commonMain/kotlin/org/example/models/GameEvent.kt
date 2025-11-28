@@ -1,5 +1,6 @@
 package org.example.models
 
+import com.example.models.CardPlayedFeedback
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -11,7 +12,8 @@ sealed interface GameEventBase
 data class CardPlayedEvent(
     val playerId: Int,
     val card: Card,
-    val targetPlayerId: Int
+    val targetPlayerId: Int,
+    val feedback: CardPlayedFeedback
 ) : GameEventBase
 
 
