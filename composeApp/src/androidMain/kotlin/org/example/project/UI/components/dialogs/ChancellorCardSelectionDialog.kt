@@ -1,5 +1,6 @@
-package org.example.project.UI.gameAreas.dialogs
+package org.example.project.UI.components.dialogs
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -8,12 +9,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.material3.Card as ComposeCard
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import io.ktor.websocket.Frame.Text
 import org.example.models.Card
 
 @Composable
@@ -24,21 +26,40 @@ fun ChancellorCardSelectionDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Wybierz kartę do zachowania") },
+        title = {
+            Text(
+                text = "Wybierz kartę do zachowania",
+                style = MaterialTheme.typography.headlineSmall
+            )
+        },
         text = {
             Column {
                 Text("Wybierz jedną kartę, którą chcesz zachować. Pozostałe zostaną odłożone na talię.")
                 Spacer(modifier = Modifier.height(16.dp))
                 LazyRow {
-                    items(availableCards.size) { index -> // card to TWOJA klasa z gry
-                        ComposeCard( // Używam Surface zamiast Card żeby uniknąć konfliktu nazw
+                    items(availableCards.size) { index ->
+                        ComposeCard(
                             modifier = Modifier
                                 .padding(8.dp)
                                 .clickable { onCardSelected(availableCards[index]) },
                             elevation = CardDefaults.cardElevation(4.dp)
                         ) {
-                            Text(availableCards[index].name)
-                            Text(text = "Nr: ${availableCards[index].number}")
+                            Column(
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .background(MaterialTheme.colorScheme.surface)
+                            ) {
+                                Text(
+                                    text = availableCards[index].name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Nr: ${availableCards[index].number}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }

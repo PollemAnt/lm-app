@@ -1,4 +1,4 @@
-package org.example.project.UI.gameAreas.dialogs
+package org.example.project.UI.components.dialogs
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
