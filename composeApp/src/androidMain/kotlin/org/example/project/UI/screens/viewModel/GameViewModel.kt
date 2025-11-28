@@ -139,7 +139,7 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
                     ChancellorUIState(availableCards = onChancellorPlayed(card, target))
                 println("[DEBUG] _chancellorState.value : ${chancellorState.value}")
                 return@launch
-            } else if (card.number == 2) {
+            } else if (card.number == 2 && target?.id != _uiState.value.player?.id) {
                 val revealedCard = onPriestPlayed(targetId = target?.id ?: return@launch)
 
                 if (revealedCard != null) {
