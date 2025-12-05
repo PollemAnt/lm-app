@@ -1,7 +1,7 @@
 package com.example.models
 
 import kotlinx.serialization.Serializable
-import org.example.models.Card
+import org.example.models.RoundSummary
 
 @Serializable
 sealed interface MoveResult {
@@ -10,6 +10,8 @@ sealed interface MoveResult {
         val feedback: CardPlayedFeedback,
         val messageToAll: String,
         val nextPlayerId: Int,
+        val isRoundEnded: Boolean = false,
+        val roundSummary : RoundSummary? = null
     ) : MoveResult
 
     @Serializable

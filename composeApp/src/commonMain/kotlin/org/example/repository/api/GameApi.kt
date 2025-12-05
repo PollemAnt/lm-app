@@ -24,6 +24,7 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
 import org.example.NetworkClient
+import org.example.models.RoundEndedEvent
 
 class GameApi(
     private val client: HttpClient = NetworkClient.httpClient,
@@ -66,6 +67,7 @@ class GameApi(
             subclass(PlayerJoinEvent::class)
             subclass(CardPlayedEvent::class)
             subclass(TurnChangedEvent::class)
+            subclass(RoundEndedEvent::class)
         }
     }
 

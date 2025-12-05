@@ -16,6 +16,12 @@ data class CardPlayedEvent(
     val feedback: CardPlayedFeedback
 ) : GameEventBase
 
+@Serializable
+@SerialName("round_ended")
+data class RoundEndedEvent(
+    val roundSummary: RoundSummary
+): GameEventBase
+
 
 @Serializable
 @SerialName("player_joined")

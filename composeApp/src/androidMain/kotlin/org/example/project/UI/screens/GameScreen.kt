@@ -26,6 +26,7 @@ import org.example.project.UI.components.PlayerInformation
 import org.example.project.UI.screens.dialogs.ChancellorCardSelectionDialog
 import org.example.project.UI.screens.dialogs.NumberPickerDialog
 import org.example.project.UI.screens.dialogs.PriestRevealDialog
+import org.example.project.UI.screens.dialogs.RoundSummaryDialog
 import org.example.project.UI.screens.viewModel.GameViewModel
 
 @Composable
@@ -35,6 +36,7 @@ fun GameScreen(
     val state by viewModel.uiState.collectAsState()
     val chancellorState by viewModel.chancellorState.collectAsState()
     val priestRevealState by viewModel.priestRevealState.collectAsState()
+    val roundSummaryState by viewModel.roundSummaryState.collectAsState()
     var showNumberPickerFor by remember { mutableStateOf<Pair<Card, Player>?>(null) }
 
     Surface(
@@ -109,6 +111,12 @@ fun GameScreen(
             targetPlayerName = it.targetPlayerName,
             revealedCard = it.revealedCard,
             onDismiss = { viewModel.dismissPriestReveal() }
+        )
+    }
+    roundSummaryState?.let {
+        RoundSummaryDialog(
+            roundSummary = it,
+            onDismiss = { viewModel.clearRoundSummary() }
         )
     }
 }

@@ -14,6 +14,7 @@ import org.example.models.GameEventBase
 import org.example.models.GameSnapshot
 import org.example.models.Player
 import org.example.models.PlayerJoinEvent
+import org.example.models.RoundEndedEvent
 import org.example.models.TurnChangedEvent
 
 class GameRepository(
@@ -41,6 +42,7 @@ class GameRepository(
                 when (event) {
                     is CardPlayedEvent,
                     is TurnChangedEvent,
+                    is RoundEndedEvent,
                     is PlayerJoinEvent -> {
                         refreshSnapshot()
                     }

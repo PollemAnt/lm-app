@@ -17,6 +17,8 @@ import org.example.models.CardPlayedEvent
 import org.example.models.GameSnapshot
 import org.example.models.Player
 import org.example.models.PlayerJoinEvent
+import org.example.models.RoundEndedEvent
+import org.example.models.RoundSummary
 import org.example.models.TurnChangedEvent
 import org.example.repository.GameRepository
 import org.example.repository.api.GameApi
@@ -60,6 +62,9 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     private val _priestRevealState = MutableStateFlow<PriestRevealState?>(null)
     val priestRevealState: StateFlow<PriestRevealState?> = _priestRevealState.asStateFlow()
 
+    private val _roundSummaryState = MutableStateFlow<RoundSummary?>(null)
+    val roundSummaryState: StateFlow<RoundSummary?> = _roundSummaryState.asStateFlow()
+
     fun dismissPriestReveal() {
         _priestRevealState.value = PriestRevealState(isRevealed = false)
     }
@@ -74,6 +79,10 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
 
                     is TurnChangedEvent -> "Tura gracza: ${getPlayerName(event.activePlayerId)}"
                     is PlayerJoinEvent -> "Gracz ${event.player.name} dołączył do gry."
+                    is RoundEndedEvent -> {
+                        "Koniec rundy! ${event.roundSummary.winnerName} wygrał rundę!"
+                        prepareSummaryRoundMessage(event)
+                    }
                 }
 
                 _uiState.update { it.copy(message = message) }
@@ -84,6 +93,12 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     private fun prepareEventMessage(event: CardPlayedEvent): String {
         val feedback = event.feedback
         return createFeedbackMessage(feedback)
+    }
+
+    private fun prepareSummaryRoundMessage(event: RoundEndedEvent): String {
+        val winner = event.roundSummary.winnerName
+        _roundSummaryState.value = event.roundSummary
+        return "Koniec rundy! $winner wygrał rundę!"
     }
 
     init {
@@ -290,5 +305,9 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     private fun getPlayerName(playerId: Int): String {
         val player = _uiState.value.gameState?.players?.find { it.id == playerId }
         return player?.name ?: "Nieznany gracz"
+    }
+
+    fun clearRoundSummary() {
+        _roundSummaryState.value = null
     }
 }
