@@ -87,8 +87,8 @@ class GameRepository(
         _snapshotFlow.value = api.getState()
     }
 
-    suspend fun onPriestPlayed(targetId: Int): List<Card>? {
-        return api.getPlayerHand(targetId)
+    suspend fun onPriestPlayed(playerId: Int, targetId: Int): List<Card>? {
+        return api.getPlayerHandForPriest(playerId, targetId)
     }
 
     suspend fun reset() {
