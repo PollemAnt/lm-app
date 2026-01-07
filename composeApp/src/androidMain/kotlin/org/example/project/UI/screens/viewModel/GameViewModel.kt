@@ -139,10 +139,12 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
         }
     }
 
-    fun join(name: String) {
+    fun join(name: String, onSuccess: (Player) -> Unit) {
         viewModelScope.launch {
             val player = repository.joinPlayer(name)
+            println("[DEBUG] ViewModel: Player joined: $player")
             _uiState.update { it.copy(player = player) }
+            onSuccess(player)
         }
     }
 
@@ -155,7 +157,10 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
                 println("[DEBUG] _chancellorState.value : ${chancellorState.value}")
                 return@launch
             } else if (card.number == 2 && target?.id != _uiState.value.player?.id) {
-                val revealedCard = onPriestPlayed(targetId = target?.id ?: return@launch)
+                val revealedCard = onPriestPlayed(
+                    playerId = _uiState.value.player!!.id,
+                    targetId = target?.id ?: return@launch
+                )
 
                 if (revealedCard != null) {
                     _priestRevealState.value = PriestRevealState(
@@ -179,9 +184,10 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     }
 
     private suspend fun onPriestPlayed(
+        playerId: Int,
         targetId: Int
     ): List<Card>? {
-        return repository.onPriestPlayed(targetId)
+        return repository.onPriestPlayed(playerId, targetId)
     }
 
     private suspend fun executeMoveInRepository(
@@ -241,10 +247,7 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
             } do odrzucenia karty."
 
             is CardPlayedFeedback.PriestPlayed -> "Gracz ${getPlayerName(feedback.viewingPlayerId)} podejrzał kartę gracza ${
-                getPlayerName(
-                    feedback.targetPlayerId
-                )
-            }: ${feedback.revealedCardNumber}"
+                getPlayerName(feedback.targetPlayerId)}"
 
             is CardPlayedFeedback.SpyPlayed -> "Gracz ${getPlayerName(feedback.spyPlayerId)} użył Szpiega."
             is CardPlayedFeedback.ChancellorPlayed -> "Gracz ${getPlayerName(feedback.playerId)} zagrał Kanclerza."

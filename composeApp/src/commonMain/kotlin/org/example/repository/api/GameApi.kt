@@ -24,6 +24,7 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
 import org.example.NetworkClient
+import org.example.models.GameConfig
 import org.example.models.RoundEndedEvent
 
 class GameApi(
@@ -93,23 +94,13 @@ class GameApi(
         return client.get("$baseUrl/player/$playerId").body()
     }
 
-    suspend fun getPlayerHand(targetId: Int): List<Card>? {
-        return try {
-            println("[API] Wykonywanie akcji Kapłana na celu ID: $targetId")
-            val response: HttpResponse = client.get("$baseUrl/hand/$targetId")
-
-            if (response.status == HttpStatusCode.OK) {
-                val hand = response.body<List<Card>>()
-                println("[API] Otrzymano rękę celu: ${hand.firstOrNull()?.name}")
-                hand
-            } else {
-                println("[API-ERROR] Nie udało się pobrać ręki gracza: ${response.status}")
-                null
-            }
-        } catch (e: Exception) {
-            println("[API-ERROR] Wyjątek podczas akcji Kapłana: ${e.message}")
-            null
+    suspend fun getPlayerHandForPriest(playerId: Int,targetId: Int): List<Card>? {
+        val response = client.post("$baseUrl/getPlayerHandForPriest") {
+            contentType(ContentType.Application.Json)
+            setBody(PriestRequest(playerId, targetId))
         }
+
+        return response.body()
 
     }
 
@@ -151,6 +142,17 @@ class GameApi(
     suspend fun getReset(): HttpStatusCode {
         return client.get("$baseUrl/reset").body()
     }
+
+    suspend fun updateGameConfig(gameConfig: GameConfig) {
+        client.post("$baseUrl/updateGameConfig") {
+            contentType(ContentType.Application.Json)
+            setBody(gameConfig)
+        }
+    }
+
+    suspend fun getGameConfig(): GameConfig {
+        return client.get("$baseUrl/getGameConfig").body()
+    }
 }
 
 @Serializable
@@ -163,3 +165,6 @@ data class MoveRequest(
 
 @Serializable
 data class DrawRequest(val playerId: Int, val card: Card)
+
+@Serializable
+data class PriestRequest(val playerId: Int, val targetId: Int)

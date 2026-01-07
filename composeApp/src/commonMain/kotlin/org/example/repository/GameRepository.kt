@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.example.models.Card
 import org.example.repository.api.GameApi
 import org.example.models.CardPlayedEvent
+import org.example.models.GameConfig
 import org.example.models.GameEventBase
 import org.example.models.GameSnapshot
 import org.example.models.Player
@@ -79,7 +80,7 @@ class GameRepository(
     }
 
     suspend fun completeChancellorMove(playerId: Int, cardToKeep: Card, targetId: Int?) {
-        val result = api.completeChancellorMove(playerId, cardToKeep, targetId)
+        api.completeChancellorMove(playerId, cardToKeep, targetId)
         refreshSnapshot()
     }
 
@@ -101,5 +102,13 @@ class GameRepository(
         card: Card,
     ): List<Card> {
         return api.drawCardForChancellor(playerId, card)
+    }
+
+    suspend fun updateGameConfig(config: GameConfig) {
+        api.updateGameConfig(config)
+    }
+
+    suspend fun getGameConfig(): GameConfig {
+        return api.getGameConfig()
     }
 }
