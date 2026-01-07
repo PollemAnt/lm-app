@@ -98,13 +98,13 @@ fun ClickableCard(
 }
 
 fun canPlayCard(card: Card, secondCard: Card?): Boolean {
-    if (card.number == 8)
+    if (card.number == 5 || card.number == 7)
         return checkCountessRequirement(secondCard)
     return card.number != 9
 }
 
 fun checkCountessRequirement(secondCard: Card?): Boolean {
-    return secondCard?.number != 5 && secondCard?.number != 7
+    return secondCard?.number != 8
 }
 
 fun canPlayOnOwnBoard(card: Card, allOpponentsProtected: Boolean?): Boolean {
