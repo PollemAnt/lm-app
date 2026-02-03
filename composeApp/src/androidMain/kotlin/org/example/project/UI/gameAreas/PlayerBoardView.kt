@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,7 +59,6 @@ fun PlayerBoardView(
     ) {
         Column(
             modifier = Modifier
-                .wrapContentHeight()
                 .fillMaxWidth()
                 .padding(vertical = 4.dp, horizontal = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -157,6 +157,14 @@ fun PlayerBoardView(
                         }
                     }
                 }
+            } else {
+                Text(
+                    "Brak zagranych kart",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center
+                )
             }
 
 
