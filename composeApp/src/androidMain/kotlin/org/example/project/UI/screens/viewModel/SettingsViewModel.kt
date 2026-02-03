@@ -102,6 +102,13 @@ class SettingsViewModel(private val repository: GameRepository) : ViewModel() {
         _errorMessage.value = null
     }
 
+    fun reset() {
+        viewModelScope.launch {
+            repository.reset()
+            repository.ping()
+        }
+    }
+
     companion object {
         fun createDefaultConfig(): GameConfig {
             return GameConfig(
