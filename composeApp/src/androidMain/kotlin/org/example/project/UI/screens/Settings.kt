@@ -1,7 +1,17 @@
 package org.example.project.UI.screens
 
-import androidx.compose.runtime.Composable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -10,17 +20,29 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.materialIcon
 import androidx.compose.material.icons.materialPath
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import org.example.models.CardCount
 import org.example.models.GameConfig
 import org.example.project.UI.screens.viewModel.SettingsViewModel
@@ -45,106 +67,140 @@ fun Settings(
             viewModel.clearError()
         }
     }
- Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text("Ustawienia Gry") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                ),
-                actions = {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .padding(8.dp),
-                            strokeWidth = 2.dp
-                        )
-                    }
-                    IconButton(
-                        onClick = { viewModel.loadConfigFromServer() },
-                        enabled = !isLoading
-                    ) {
-                        Icon(
-                            Icons.Default.Refresh,
-                            contentDescription = "Odśwież konfigurację"
-                        )
-                    }
-                }
-            )
-        },
-        bottomBar = {
-            Button(
-                onClick = { viewModel.sendConfigToServer() },
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(color = MaterialTheme.colorScheme.surface),
+    ) {
+        SettingsButtons(isLoading, viewModel)
+        if (isLoading && configState == null) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp),
-                enabled = configState != null && !isLoading
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                } else {
-                    Text("Zapisz i wyślij na serwer")
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator()
+                    Text("Ładowanie konfiguracji...")
                 }
             }
         }
-    ) { paddingValues ->
-        when {
-            isLoading && configState == null -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
+        if (configState == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        CircularProgressIndicator()
-                        Text("Ładowanie konfiguracji...")
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = "Błąd",
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    Text(
+                        "Nie udało się załadować konfiguracji",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Button(onClick = { viewModel.loadConfigFromServer() }) {
+                        Text("Spróbuj ponownie")
                     }
                 }
             }
-            configState == null -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Warning,
-                            contentDescription = "Błąd",
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                        Text(
-                            "Nie udało się załadować konfiguracji",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Button(onClick = { viewModel.loadConfigFromServer() }) {
-                            Text("Spróbuj ponownie")
-                        }
-                    }
-                }
-            }
-            else -> {
-                SettingsContent(
-                    configState = configState,
-                    viewModel = viewModel,
-                    paddingValues = paddingValues
+        }
+
+        SettingsContent(
+            configState = configState,
+            viewModel = viewModel,
+            isLoading = isLoading
+        )
+    }
+}
+
+@Composable
+private fun SettingsButtons(
+    isLoading: Boolean,
+    viewModel: SettingsViewModel
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp, horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        TextButton(
+            onClick = { viewModel.loadConfigFromServer() },
+            enabled = !isLoading,
+            modifier = Modifier.weight(1f),
+            colors = ButtonDefaults.textButtonColors(
+                contentColor = MaterialTheme.colorScheme.secondary
+            )
+        ) {
+            Icon(
+                Icons.Default.Refresh,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text("Pobierz")
+        }
+
+
+        TextButton(
+            onClick = { viewModel.reset() },
+            enabled = !isLoading,
+            modifier = Modifier.weight(1f),
+            colors = ButtonDefaults.textButtonColors(
+                contentColor = MaterialTheme.colorScheme.error
+            )
+        ) {
+            Icon(
+                Icons.Default.Refresh,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text("Resetuj")
+        }
+
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+private fun SaveButton(
+    viewModel: SettingsViewModel,
+    isLoading: Boolean
+) {
+    Row {
+        Button(
+            onClick = { viewModel.sendConfigToServer() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            enabled = !isLoading
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.surface
                 )
+            } else {
+                Text("Zapisz i wyślij na serwer")
             }
         }
     }
@@ -154,13 +210,11 @@ fun Settings(
 private fun SettingsContent(
     configState: GameConfig,
     viewModel: SettingsViewModel,
-    paddingValues: PaddingValues
+    isLoading: Boolean
 ) {
     LazyColumn(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 8.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(vertical = 16.dp)
     ) {
@@ -172,7 +226,6 @@ private fun SettingsContent(
         }
 
         item {
-            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 "Konfiguracja Talii",
                 style = MaterialTheme.typography.titleLarge,
@@ -187,32 +240,44 @@ private fun SettingsContent(
                 onDecrement = { viewModel.updateCardCount(cardCount.cardNumber, -1) }
             )
         }
+        item {
+            SaveButton(viewModel, isLoading)
+        }
     }
 }
 
 @Composable
 private fun PlayerCountSelector(currentCount: Int, onCountChange: (Int) -> Unit) {
-    Card(elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("Maksymalna liczba graczy", style = MaterialTheme.typography.titleMedium)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Text(
+            "Liczba graczy: ",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.padding(end = 8.dp)
+        )
+        Card(
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp)
+                modifier = Modifier.padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { onCountChange(currentCount - 1) }) {
-                    Icon(minus, contentDescription = "Zmniejsz liczbę graczy")
+                    Icon(minus, contentDescription = "Odejmij kartę")
                 }
                 Text(
                     text = "$currentCount",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    fontSize = 20.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp)
                 )
                 IconButton(onClick = { onCountChange(currentCount + 1) }) {
-                    Icon(Icons.Default.Add, contentDescription = "Zwiększ liczbę graczy")
+                    Icon(Icons.Default.Add, contentDescription = "Dodaj kartę")
                 }
             }
         }
@@ -225,30 +290,48 @@ private fun CardConfigItem(
     onIncrement: () -> Unit,
     onDecrement: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+
+        Text(
+            "${cardCount.cardName} (${cardCount.cardNumber})",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.padding(end = 8.dp)
+        )
+
+        Card(
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
-            Text(
-                "${cardCount.cardName} (${cardCount.cardNumber})",
-                style = MaterialTheme.typography.bodyLarge
-            )
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 IconButton(onClick = onDecrement) {
-                    Icon(minus, contentDescription = "Odejmij kartę")
+                    Icon(
+                        minus,
+                        contentDescription = "Odejmij kartę",
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
                 }
                 Text(
                     text = "${cardCount.count}",
                     fontSize = 20.sp,
-                    modifier = Modifier.padding(horizontal = 8.dp)
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    color = MaterialTheme.colorScheme.secondary
                 )
                 IconButton(onClick = onIncrement) {
-                    Icon(Icons.Default.Add, contentDescription = "Dodaj kartę")
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Dodaj kartę",
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
                 }
             }
         }

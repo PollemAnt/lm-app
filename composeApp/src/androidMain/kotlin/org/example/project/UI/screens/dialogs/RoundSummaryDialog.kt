@@ -10,11 +10,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -26,6 +24,8 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import org.example.models.RoundSummary
 
 
@@ -34,16 +34,23 @@ fun RoundSummaryDialog(
     roundSummary: RoundSummary,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = "Runda zakończona",
-                style = MaterialTheme.typography.headlineSmall
-            )
-        },
-        text = {
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            shape = MaterialTheme.shapes.large,
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
             Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -63,23 +70,20 @@ fun RoundSummaryDialog(
                     )
                 }
 
-                // Tabela wyników
                 Text(
                     text = "Tabela wyników:",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
 
-                // Kontener dla tabeli z obramowaniem
                 Card(
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant
                     ),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column {
-                        // Nagłówek tabeli
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -99,9 +103,6 @@ fun RoundSummaryDialog(
                             )
                         }
 
-                        Divider(color = MaterialTheme.colorScheme.outline)
-
-                        // Wiersze z danymi graczy
                         roundSummary.scoreTable.entries.forEachIndexed { index, (playerName, points) ->
                             Row(
                                 modifier = Modifier
@@ -118,7 +119,6 @@ fun RoundSummaryDialog(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    // Oznaczenie zwycięzcy i szpiega
                                     if (playerName == roundSummary.winnerName) {
                                         Icon(
                                             imageVector = Icons.Default.ThumbUp,
@@ -142,7 +142,6 @@ fun RoundSummaryDialog(
                                         else MaterialTheme.colorScheme.onSurface
                                     )
                                 }
-
                                 Text(
                                     text = points.toString(),
                                     fontWeight = FontWeight.Bold,
@@ -153,7 +152,6 @@ fun RoundSummaryDialog(
                     }
                 }
 
-                // Podsumowanie
                 val maxPoints = roundSummary.scoreTable.maxByOrNull { it.value }?.value
                 val topPlayers = roundSummary.scoreTable.filter { it.value == maxPoints }
 
@@ -164,16 +162,14 @@ fun RoundSummaryDialog(
                         fontStyle = FontStyle.Italic
                     )
                 }
+
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("OK")
+                }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = onDismiss,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("OK")
-            }
-        },
-        modifier = Modifier.fillMaxWidth(0.9f)
-    )
+        }
+    }
 }

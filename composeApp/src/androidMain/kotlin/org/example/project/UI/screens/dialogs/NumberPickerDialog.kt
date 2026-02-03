@@ -68,7 +68,7 @@ fun NumberPickerDialog(
                             Text(
                                 text = name,
                                 style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onPrimary
+                                color = MaterialTheme.colorScheme.surface
                             )
                         }
                     }

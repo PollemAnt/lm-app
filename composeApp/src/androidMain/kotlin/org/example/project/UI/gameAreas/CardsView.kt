@@ -1,46 +1,86 @@
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
-import org.example.models.Card
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import org.example.models.Card
 
 @Composable
-fun CardView(card: Card) {
+fun SmallCardView(card: Card) {
     Box(
         modifier = Modifier
             .width(60.dp)
-            .height(90.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.tertiaryContainer)
-            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+            .height(70.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.surface,
+                        MaterialTheme.colorScheme.surfaceTint
+                    )
+                )
+            )
+            .border(
+                1.dp,
+                MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                RoundedCornerShape(8.dp)
+            )
             .padding(2.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                "${card.number}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onTertiaryContainer
-            )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.8f))
+                    .padding(2.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "${card.number}",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
+
             Text(
                 card.name,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onTertiaryContainer
-            )
+                style = MaterialTheme.typography.labelSmall,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.secondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+
+                )
         }
     }
 }
@@ -50,47 +90,83 @@ fun ClickableCard(
     card: Card,
     isSelected: Boolean,
     onCardClicked: () -> Unit,
-    secondCard: Card?
+    secondCard: Card?,
+    modifier: Modifier = Modifier
 ) {
     val canBePlayed = canPlayCard(card, secondCard)
-    val backgroundColor = when {
-        !canBePlayed -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-        isSelected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-        else -> MaterialTheme.colorScheme.surface
-    }
 
-    Box(
-        modifier = Modifier
-            .width(100.dp)
-            .height(130.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(backgroundColor)
-            .border(
-                2.dp,
-                when {
-                    !canBePlayed -> MaterialTheme.colorScheme.error
-                    isSelected -> MaterialTheme.colorScheme.primary
-                    else -> MaterialTheme.colorScheme.outline
-                },
-                RoundedCornerShape(16.dp)
-            )
+    Card(
+        modifier = modifier
             .clickable(
                 enabled = canBePlayed,
                 onClick = onCardClicked
-            )
-            .padding(4.dp),
-        contentAlignment = Alignment.Center
+            ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 6.dp else 2.dp
+        ),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.Transparent
+        ),
+        border = when {
+            !canBePlayed -> BorderStroke(2.dp, MaterialTheme.colorScheme.error)
+            isSelected -> BorderStroke(2.dp, MaterialTheme.colorScheme.tertiary)
+            else -> null
+        },
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(horizontalArrangement = Arrangement.Start) {
-                Text("${card.number}", style = MaterialTheme.typography.titleLarge)
-                Text(card.name, style = MaterialTheme.typography.titleMedium)
-            }
+
+        Column(
+            modifier = Modifier
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.surface,
+                            MaterialTheme.colorScheme.surfaceBright
+                        )
+                    )
+                )
+                .fillMaxSize()
+                .padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+
+            Text(
+                "${card.number}",
+                style = MaterialTheme.typography.displayMedium,
+                fontWeight = FontWeight.Bold,
+                color = when {
+                    !canBePlayed -> MaterialTheme.colorScheme.error
+                    isSelected -> MaterialTheme.colorScheme.tertiary
+                    else -> MaterialTheme.colorScheme.secondary
+                }
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                card.name,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                color = when {
+                    !canBePlayed -> MaterialTheme.colorScheme.onErrorContainer
+                    isSelected -> MaterialTheme.colorScheme.tertiary
+                    else -> MaterialTheme.colorScheme.secondary
+                }
+            )
+
             if (!canBePlayed) {
                 Text(
                     "Nie można zagrać",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error
+                )
+            } else if (isSelected) {
+                Text(
+                    "✓ Wybrano",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.tertiary
                 )
             }
         }

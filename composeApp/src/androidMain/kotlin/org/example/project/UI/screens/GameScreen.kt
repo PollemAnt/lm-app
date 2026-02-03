@@ -1,14 +1,17 @@
 package org.example.project.UI.screens
 
-import PlayerGameArea
+import OpponentsArea
+import PlayerBoardView
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -21,8 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.example.models.Card
 import org.example.models.Player
-import org.example.project.UI.components.ControlPanel
-import org.example.project.UI.components.PlayerInformation
+import org.example.project.UI.gameAreas.GameMessageBar
+import org.example.project.UI.gameAreas.PlayerCardsSection
 import org.example.project.UI.screens.dialogs.ChancellorCardSelectionDialog
 import org.example.project.UI.screens.dialogs.NumberPickerDialog
 import org.example.project.UI.screens.dialogs.PriestRevealDialog
@@ -39,53 +42,97 @@ fun GameScreen(
     val roundSummaryState by viewModel.roundSummaryState.collectAsState()
     var showNumberPickerFor by remember { mutableStateOf<Pair<Card, Player>?>(null) }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+    var selectedCard by remember { mutableStateOf<Card?>(null) }
+
+    val displayState = state
+
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                color = MaterialTheme.colorScheme.primary,
+            )
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .padding(top = 64.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+        HorizontalDivider(color = MaterialTheme.colorScheme.onSecondary, thickness = 2.dp)
 
-            state.gameState?.let { gameState ->
-                ControlPanel(
-                    connectionStatus = state.isConnected ?: "Brak połączenia z serwerem",
-                    onReset = { viewModel.reset() }
-                )
+        if (displayState.message != null) {
+            GameMessageBar(
+                message = displayState.message,
+                remainingCards = displayState.gameState?.cards?.size ?: 0
+            )
+        }
 
-                PlayerInformation(
-                    player = state.player!!,
-                    gameState = gameState
-                )
+        HorizontalDivider(color = MaterialTheme.colorScheme.onSecondary, thickness = 2.dp)
 
-                Spacer(Modifier.height(16.dp))
+        displayState.gameState?.let { gameState ->
+            val player = displayState.player!!
+            val opponents = gameState.players.filter { it.id != player.id }
+            val allOpponentsProtected = opponents.all { it.isProtected }
 
-                PlayerGameArea(
-                    player = state.player!!,
-                    hand = state.hand,
-                    players = gameState.players,
-                    onPlayCard = { card, opponent ->
-                        if (card.number == 1 && opponent != null && opponent.id != state.player?.id) {
-                            showNumberPickerFor = card to opponent
-                        } else {
-                            viewModel.makeMove(card, opponent, null)
+
+            if (opponents.isNotEmpty() == true) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OpponentsArea(
+                        player = player,
+                        players = gameState.players,
+                        activePlayerId = gameState.activePlayerId ?: 0,
+                        selectedCard = selectedCard,
+                        onCardPlayed = { card, opponent ->
+                            if (card.number == 1 && opponent != null && opponent.id != player.id) {
+                                showNumberPickerFor = card to opponent
+                            } else {
+                                viewModel.makeMove(card, opponent, null)
+                            }
+                            selectedCard = null
                         }
-                    }
-                )
+                    )
+                }
+            }
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSecondary, thickness = 2.dp)
 
-                Spacer(Modifier.height(16.dp))
+            PlayerBoardView(
+                player = player,
+                selectedCard = selectedCard,
+                activePlayerId = gameState.activePlayerId ?: 0,
+                onCardPlayed = { card ->
+                    viewModel.makeMove(card, player, null)
+                    selectedCard = null
+                },
+                allOpponentsProtected = allOpponentsProtected
+            )
 
-                state.message?.let {
-                    Text(it, color = MaterialTheme.colorScheme.primary)
+            HorizontalDivider(color = MaterialTheme.colorScheme.onSecondary, thickness = 2.dp)
+
+            PlayerCardsSection(
+                hand = displayState.hand,
+                selectedCard = selectedCard,
+                onCardSelected = { card ->
+                    selectedCard = if (selectedCard?.id == card.id) null else card
+                }
+            )
+
+        } ?: run {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    CircularProgressIndicator()
+                    Text("Ładowanie stanu gry...")
                 }
             }
         }
-    }
 
+    }
 
     showNumberPickerFor?.let { (card, opponent) ->
         NumberPickerDialog(
@@ -98,13 +145,15 @@ fun GameScreen(
     }
 
     chancellorState?.let {
-        println("[DEBUG] GameScreen chancellorState: $chancellorState")
         ChancellorCardSelectionDialog(
             availableCards = it.availableCards,
-            onCardSelected = { selectedCard -> viewModel.completeChancellorMove(selectedCard) },
+            onCardSelected = { selectedCard ->
+                viewModel.completeChancellorMove(selectedCard)
+            },
             onDismiss = { }
         )
     }
+
     priestRevealState?.let {
         PriestRevealDialog(
             isRevealed = it.isRevealed,
@@ -113,6 +162,7 @@ fun GameScreen(
             onDismiss = { viewModel.dismissPriestReveal() }
         )
     }
+
     roundSummaryState?.let {
         RoundSummaryDialog(
             roundSummary = it,
