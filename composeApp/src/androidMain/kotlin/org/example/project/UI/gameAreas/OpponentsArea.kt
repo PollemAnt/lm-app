@@ -154,6 +154,7 @@ private fun OpponentItem(
     ) {
         Box(
             modifier = Modifier
+                .fillMaxSize()
                 .background(
                     Brush.linearGradient(
                         colors = listOf(
