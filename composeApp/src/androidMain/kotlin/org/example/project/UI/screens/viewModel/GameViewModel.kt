@@ -151,12 +151,14 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     fun makeMove(card: Card, target: Player?, guessCardNumber: Int?) {
         viewModelScope.launch(Dispatchers.Default) {
             if (card.number == 6) {
-                println("[DEBUG] ViewModel: Making move for Chancellor")
+
                 _chancellorState.value =
                     ChancellorUIState(availableCards = onChancellorPlayed(card, target))
-                println("[DEBUG] _chancellorState.value : ${chancellorState.value}")
+
                 return@launch
+
             } else if (card.number == 2 && target?.id != _uiState.value.player?.id) {
+
                 val revealedCard = onPriestPlayed(
                     playerId = _uiState.value.player!!.id,
                     targetId = target?.id ?: return@launch
@@ -168,7 +170,6 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
                         targetPlayerName = target.name,
                         revealedCard = revealedCard.first()
                     )
-                    println("[VM] Ujawniona karta: ${revealedCard.first().name}. Aktualizacja UI.")
                 }
             }
 
@@ -293,7 +294,6 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     }
 
     fun connectToUpdates() {
-        println("[EVENT] ViewModel: connectToUpdates called")
         viewModelScope.launch { repository.connectToUpdates() }
     }
 
