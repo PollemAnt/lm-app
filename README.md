@@ -1,66 +1,212 @@
-This is a Kotlin Multiplatform project targeting Android, iOS, Web, Desktop (JVM).
+# lm-app
 
-* [/composeApp](./composeApp/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./composeApp/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./composeApp/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./composeApp/src/jvmMain/kotlin)
-    folder is the appropriate location.
-
-* [/iosApp](./iosApp/iosApp) contains iOS applications. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
-
-### Build and Run Android Application
-
-To build and run the development version of the Android app, use the run configuration from the run widget
-in your IDE’s toolbar or build it directly from the terminal:
-- on macOS/Linux
-  ```shell
-  ./gradlew :composeApp:assembleDebug
-  ```
-- on Windows
-  ```shell
-  .\gradlew.bat :composeApp:assembleDebug
-  ```
-
-### Build and Run Desktop (JVM) Application
-
-To build and run the development version of the desktop app, use the run configuration from the run widget
-in your IDE’s toolbar or run it directly from the terminal:
-- on macOS/Linux
-  ```shell
-  ./gradlew :composeApp:run
-  ```
-- on Windows
-  ```shell
-  .\gradlew.bat :composeApp:run
-  ```
-
-### Build and Run Web Application
-
-To build and run the development version of the web app, use the run configuration from the run widget
-in your IDE’s toolbar or run it directly from the terminal:
-- on macOS/Linux
-  ```shell
-  ./gradlew :composeApp:wasmJsBrowserDevelopmentRun
-  ```
-- on Windows
-  ```shell
-  .\gradlew.bat :composeApp:wasmJsBrowserDevelopmentRun
-  ```
-
-### Build and Run iOS Application
-
-To build and run the development version of the iOS app, use the run configuration from the run widget
-in your IDE’s toolbar or open the [/iosApp](./iosApp) directory in Xcode and run it from there.
+> 🇵🇱 Polski opis poniżej  
+> 🇬🇧 English version below
 
 ---
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html),
-[Compose Multiplatform](https://github.com/JetBrains/compose-multiplatform/#compose-multiplatform),
-[Kotlin/Wasm](https://kotl.in/wasm/)…
+# List Miłosny – Aplikacja Multiplayer (PL)
 
-We would appreciate your feedback on Compose/Web and Kotlin/Wasm in the public Slack channel [#compose-web](https://slack-chats.kotlinlang.org/c/compose-web).
-If you face any issues, please report them on [YouTrack](https://youtrack.jetbrains.com/newIssue?project=CMP).
+Klient gry multiplayer **„List Miłosny”**
+
+Aplikacja łączy się z dedykowanym backendem, który odpowiada
+za logikę gry oraz synchronizację stanu pomiędzy graczami.
+
+Projekt jest częścią większego systemu:
+
+- 📱 aplikacja kliencka (ten projekt)
+- 🌐 serwer multiplayer (repozytorium: lm-serwer)
+
+---
+
+## 🎮 O grze
+
+**List Miłosny** to cyfrowa wersja karcianej gry multiplayer.
+
+Gracze dołączają do wspólnej rozgrywki i zagrywają karty,
+z których każda posiada unikalny efekt wpływający na przebieg gry.
+
+Aplikacja odpowiada za:
+
+- prezentację interfejsu użytkownika
+- wysyłanie akcji gracza do serwera
+- odbieranie aktualizacji stanu gry w czasie rzeczywistym
+- wizualizację eventów (zagranie karty, koniec rundy, dołączenie gracza)
+
+Cała logika gry realizowana jest po stronie serwera.
+
+---
+
+## 🧠 Architektura klienta
+
+Aplikacja została zbudowana w oparciu o architekturę:
+
+- UI (Compose)
+- Warstwa komunikacji sieciowej (REST + WebSocket)
+- Modele współdzielone (commonMain – Kotlin Multiplatform)
+
+Klient jest „cienki” – nie zawiera logiki gry,
+a jedynie renderuje stan otrzymany z serwera.
+
+---
+
+## 🛠 Stack technologiczny
+
+- **Kotlin Multiplatform**
+- **Ktor Client**
+- **Kotlinx Serialization**
+- **Coroutines**
+- **Gradle**
+
+---
+
+## 📚 Wykorzystane biblioteki i ich rola
+
+### 🔹 Compose 
+Służy do budowy interfejsu użytkownika
+
+### 🔹 Ktor Client
+Biblioteka do komunikacji z backendem.
+
+W projekcie wykorzystywana do:
+- wykonywania zapytań REST
+- obsługi połączenia WebSocket
+
+### 🔹 REST (HTTP)
+Używany do operacji takich jak:
+
+- dołączanie gracza do gry
+- pobieranie aktualnego stanu gry
+- wykonywanie ruchu
+- aktualizacja konfiguracji gry
+
+REST służy do operacji typu request → response,
+gdzie klient oczekuje konkretnej odpowiedzi od serwera.
+
+### 🔹 WebSocket
+Używany do komunikacji w czasie rzeczywistym.
+
+WebSocket odpowiada za:
+- odbieranie eventów z serwera
+- synchronizację stanu gry między wszystkimi graczami
+- natychmiastową reakcję UI na zdarzenia (np. zagranie karty)
+
+Dzięki WebSocket wszyscy gracze widzą ten sam stan gry w tym samym czasie.
+
+### 🔹 Kotlinx Serialization
+Służy do:
+- serializacji i deserializacji JSON
+- mapowania danych z serwera na modele aplikacji
+
+### 🔹 Coroutines
+Umożliwiają:
+- asynchroniczną komunikację z serwerem
+- obsługę WebSocket bez blokowania UI
+
+---
+
+## 🔄 Komunikacja z serwerem
+
+Aplikacja współpracuje z backendem:
+- REST → wysyłanie akcji gracza
+- WebSocket → odbieranie eventów gry
+
+Schemat komunikacji:
+
+1. Gracz wykonuje akcję w UI
+2. Klient wysyła żądanie REST do serwera
+3. Serwer przetwarza ruch
+4. Serwer wysyła event przez WebSocket
+5. Wszyscy klienci aktualizują UI
+
+---
+
+# List Miłosny – Multiplayer App (EN)
+
+Client application for the multiplayer game **“Love Letter”**,
+
+The app connects to a dedicated backend server responsible
+for game logic and state synchronization.
+
+---
+
+## 🎮 About the game
+
+**Love Letter** is a digital multiplayer card game.
+
+Players join a shared session and play cards,
+each having a unique effect influencing the game flow.
+
+The client is responsible for:
+
+- rendering the user interface
+- sending player actions to the server
+- receiving real-time updates
+- visualizing game events
+
+All core game logic is handled on the server side.
+
+---
+
+## 🧠 Client architecture
+
+The application follows a layered structure:
+
+- UI layer (Compose)
+- Network layer (REST + WebSocket)
+
+The client does not implement game rules.
+It renders state received from the backend.
+
+---
+
+## 🛠 Tech stack
+
+- **Kotlin Multiplatform**
+- **Ktor Client**
+- **Kotlinx Serialization**
+- **Coroutines**
+- **Gradle**
+
+---
+
+## 📚 Libraries and their purpose
+
+### 🔹 Compose 
+Used to build UI 
+
+### 🔹 Ktor Client
+Used for communication with the backend:
+- REST API calls
+- WebSocket connection
+
+### 🔹 REST (HTTP)
+Used for request-response interactions:
+- joining a game
+- making a move
+- retrieving game state
+- updating configuration
+
+### 🔹 WebSocket
+Used for real-time communication:
+- receiving game events
+- synchronizing game state between players
+- instant UI updates
+
+### 🔹 Kotlinx Serialization
+Used for JSON serialization/deserialization.
+
+### 🔹 Coroutines
+Used for asynchronous networking without blocking the UI.
+
+---
+
+## 🔄 Server communication flow
+
+1. Player performs an action in the UI
+2. Client sends a REST request
+3. Server processes the action
+4. Server broadcasts a WebSocket event
+5. All connected clients update their UI
+
+---
