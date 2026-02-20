@@ -13,7 +13,6 @@ import io.ktor.websocket.readText
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.example.models.CardPlayedEvent
-import org.example.models.GameEventBase
 import org.example.models.GameSnapshot
 import org.example.models.Player
 import org.example.models.PlayerJoinEvent
@@ -25,7 +24,9 @@ import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
 import org.example.NetworkClient
 import org.example.models.GameConfig
+import org.example.models.GameSnapshotEvent
 import org.example.models.RoundEndedEvent
+import org.example.models.ServerEvent
 
 class GameApi(
     private val client: HttpClient = NetworkClient.httpClient,
@@ -41,19 +42,16 @@ class GameApi(
         }
     }
 
-    suspend fun connectToUpdates(onEvent: suspend (GameEventBase) -> Unit) {
+    suspend fun connectToUpdates(onEvent: suspend (ServerEvent) -> Unit) {
         client.webSocket(
             urlString = baseUrl.replace("https", "wss") + "/updates"
         ) {
-            println("Połączono z WebSocket!")
 
             for (frame in incoming) {
-
+                println("[EVENT] API: $frame")
                 val text = (frame as? Frame.Text)?.readText() ?: "Brak.."
-                println("[EVENT] API Odebrano event: $text")
                 try {
-                    val event = json.decodeFromString<GameEventBase>(text)
-                    println("[EVENT] API Event: $event")
+                    val event = json.decodeFromString<ServerEvent>(text)
                     onEvent(event)
 
                 } catch (e: Exception) {
@@ -64,11 +62,13 @@ class GameApi(
     }
 
     val eventModule = SerializersModule {
-        polymorphic(GameEventBase::class) {
+        polymorphic(ServerEvent::class) {
             subclass(PlayerJoinEvent::class)
             subclass(CardPlayedEvent::class)
             subclass(TurnChangedEvent::class)
             subclass(RoundEndedEvent::class)
+
+            subclass(GameSnapshotEvent::class)
         }
     }
 
@@ -114,7 +114,6 @@ class GameApi(
             contentType(ContentType.Application.Json)
             setBody(MoveRequest(playerId, card, targetPlayerId, guessCardNumber))
         }
-        println("[DEBUG] MoveResponse:  makeMove response: $response")
     }
 
     suspend fun completeChancellorMove(
@@ -126,7 +125,6 @@ class GameApi(
             contentType(ContentType.Application.Json)
             setBody(MoveRequest(playerId, cardToKeep, targetPlayerId, null))
         }
-        println("[DEBUG] MoveResponse: completeChancellorMove response: $response")
     }
 
 

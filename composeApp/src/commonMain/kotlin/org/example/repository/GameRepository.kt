@@ -9,14 +9,11 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.example.models.Card
 import org.example.repository.api.GameApi
-import org.example.models.CardPlayedEvent
 import org.example.models.GameConfig
 import org.example.models.GameEventBase
 import org.example.models.GameSnapshot
+import org.example.models.GameSnapshotEvent
 import org.example.models.Player
-import org.example.models.PlayerJoinEvent
-import org.example.models.RoundEndedEvent
-import org.example.models.TurnChangedEvent
 
 class GameRepository(
     private val api: GameApi
@@ -34,18 +31,16 @@ class GameRepository(
     val eventsFlow: SharedFlow<GameEventBase> = _eventsFlow.asSharedFlow()
 
     suspend fun connectToUpdates() {
-        println("[EVENT] Repository: Starting connectToUpdates")
         try {
             api.connectToUpdates { event ->
-                println("[EVENT] Repository: Received event from API: ${event::class.simpleName}")
-                _eventsFlow.tryEmit(event)
-                println("[EVENT] Repository: try emit: $event")
                 when (event) {
-                    is CardPlayedEvent,
-                    is TurnChangedEvent,
-                    is RoundEndedEvent,
-                    is PlayerJoinEvent -> {
-                        refreshSnapshot()
+
+                    is GameSnapshotEvent -> {
+                        _snapshotFlow.value = event.snapshot
+                    }
+
+                    is GameEventBase -> {
+                        _eventsFlow.tryEmit(event)
                     }
                 }
             }
@@ -64,7 +59,6 @@ class GameRepository(
 
     suspend fun joinPlayer(name: String): Player {
         val player = api.join(name)
-        refreshSnapshot()
         return player
     }
 
@@ -74,18 +68,11 @@ class GameRepository(
         targetId: Int?,
         guessCardNumber: Int?
     ) {
-        val result = api.makeMove(playerId, card, targetId, guessCardNumber)
-        refreshSnapshot()
-
+        api.makeMove(playerId, card, targetId, guessCardNumber)
     }
 
     suspend fun completeChancellorMove(playerId: Int, cardToKeep: Card, targetId: Int?) {
         api.completeChancellorMove(playerId, cardToKeep, targetId)
-        refreshSnapshot()
-    }
-
-    suspend fun refreshSnapshot() {
-        _snapshotFlow.value = api.getState()
     }
 
     suspend fun onPriestPlayed(playerId: Int, targetId: Int): List<Card>? {
@@ -94,7 +81,6 @@ class GameRepository(
 
     suspend fun reset() {
         api.getReset()
-        refreshSnapshot()
     }
 
     suspend fun onChancellorPlayed(

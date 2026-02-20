@@ -44,10 +44,8 @@ class SettingsViewModel(private val repository: GameRepository) : ViewModel() {
             try {
                 val config = repository.getGameConfig()
                 _configState.value = config
-                println("Pobrano konfigurację z serwera: $config")
             } catch (e: Exception) {
                 _errorMessage.value = "Nie udało się pobrać konfiguracji: ${e.message}"
-                println("Błąd podczas pobierania konfiguracji: ${e.message}")
 
                 _configState.value = createDefaultConfig()
             } finally {
@@ -79,7 +77,7 @@ class SettingsViewModel(private val repository: GameRepository) : ViewModel() {
 
     fun sendConfigToServer() {
         viewModelScope.launch {
-            val currentConfig = _configState.value ?: return@launch
+            val currentConfig = _configState.value
 
             println("Wysyłanie konfiguracji do serwera: $currentConfig")
 
