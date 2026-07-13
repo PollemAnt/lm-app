@@ -16,7 +16,7 @@ class SettingsViewModel(private val repository: GameRepository) : ViewModel() {
         GameRepository(
             GameApi(
                 client = NetworkClient.httpClient,
-                "https://lm-serwer.onrender.com"
+                "https://lm-serwer.onrender.com"//"http://192.168.18.104:8080/"
             )
         )
     )

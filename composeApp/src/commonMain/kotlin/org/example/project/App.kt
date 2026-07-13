@@ -1,5 +1,5 @@
 package org.example.project
-
+/*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import org.example.ApiService
 import org.example.models.CardPlayedEvent
 import org.example.models.GameSnapshot
 import org.example.models.Player
@@ -161,5 +160,5 @@ fun App() {
             message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
         }
     }
-}
+}*/
 

@@ -196,7 +196,6 @@ fun App(viewModel: GameViewModel = viewModel()) {
                         } else {
                             GameScreen(viewModel = viewModel)
                         }
-                        GameScreen(viewModel = viewModel)
                     }
 
                     composable(Screen.Settings.route) {

@@ -14,7 +14,9 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,93 +32,142 @@ import org.example.project.UI.screens.dialogs.ChancellorCardSelectionDialog
 import org.example.project.UI.screens.dialogs.NumberPickerDialog
 import org.example.project.UI.screens.dialogs.PriestRevealDialog
 import org.example.project.UI.screens.dialogs.RoundSummaryDialog
+import org.example.project.UI.screens.viewModel.GameUiEvent
 import org.example.project.UI.screens.viewModel.GameViewModel
+import java.util.UUID.randomUUID
 
 @Composable
 fun GameScreen(
     viewModel: GameViewModel
 ) {
+    val screenId = remember { randomUUID().toString().take(4) }
+    println("DEBUG - GameScreen instance $screenId")
     val state by viewModel.uiState.collectAsState()
-    val chancellorState by viewModel.chancellorState.collectAsState()
-    val priestRevealState by viewModel.priestRevealState.collectAsState()
-    val roundSummaryState by viewModel.roundSummaryState.collectAsState()
-    var showNumberPickerFor by remember { mutableStateOf<Pair<Card, Player>?>(null) }
 
     var selectedCard by remember { mutableStateOf<Card?>(null) }
+    var showNumberPickerFor by remember { mutableStateOf<Pair<Card, Player>?>(null) }
 
-    val displayState = state
+    var priestDialog by remember { mutableStateOf<GameUiEvent.ShowPriestReveal?>(null) }
+    var roundSummaryDialog by remember { mutableStateOf<GameUiEvent.ShowRoundSummary?>(null) }
+    var message by remember { mutableStateOf<String?>(null) }
 
+    LaunchedEffect(viewModel) {
+        println("DEBUG - collector started in screen $screenId")
+        viewModel.uiEvents.collect { event ->
+            println("DEBUG - GameScreen collect event $event")
+            when (event) {
+
+                is GameUiEvent.ShowMessage -> {
+                    message = event.message
+                }
+
+                is GameUiEvent.ShowPriestReveal -> {
+                    println("DEBUG - GameScreen ShowPriestReveal")
+                    priestDialog = event
+                }
+
+                is GameUiEvent.ShowRoundSummary -> {
+                    roundSummaryDialog = event
+                }
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                color = MaterialTheme.colorScheme.primary,
-            )
+            .background(MaterialTheme.colorScheme.primary)
     ) {
-        HorizontalDivider(color = MaterialTheme.colorScheme.onSecondary, thickness = 2.dp)
 
-        if (displayState.message != null) {
-            GameMessageBar(
-                message = displayState.message,
-                remainingCards = displayState.gameState?.cards?.size ?: 0
-            )
-        }
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.onSecondary,
+            thickness = 2.dp
+        )
 
-        HorizontalDivider(color = MaterialTheme.colorScheme.onSecondary, thickness = 2.dp)
+        GameMessageBar(
+            message = message.toString(),
+            remainingCards = state.gameState?.cards?.size ?: 0
+        )
 
-        displayState.gameState?.let { gameState ->
-            val player = displayState.player!!
-            val opponents = gameState.players.filter { it.id != player.id }
-            val allOpponentsProtected = opponents.all { it.isProtected }
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.onSecondary,
+            thickness = 2.dp
+        )
 
+        state.gameState?.let { gameState ->
+            state.player?.let { player ->
 
-            if (opponents.isNotEmpty() == true) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OpponentsArea(
-                        player = player,
-                        players = gameState.players,
-                        activePlayerId = gameState.activePlayerId ?: 0,
-                        selectedCard = selectedCard,
-                        onCardPlayed = { card, opponent ->
-                            if (card.number == 1 && opponent != null && opponent.id != player.id) {
-                                showNumberPickerFor = card to opponent
-                            } else {
-                                viewModel.makeMove(card, opponent, null)
+                val allOpponentsProtected by remember(gameState, player.id) {
+                    derivedStateOf {
+                        gameState.players
+                            .filter { it.id != player.id }
+                            .let { opponents ->
+                                opponents.isNotEmpty() && opponents.all { it.isProtected }
                             }
-                            selectedCard = null
-                        }
-                    )
+                    }
                 }
+
+                val activePlayerId = gameState.activePlayerId
+
+                val opponents = gameState.players.filter { it.id != player.id }
+
+                if (opponents.isNotEmpty()) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OpponentsArea(
+                            player = player,
+                            players = gameState.players,
+                            activePlayerId = activePlayerId,
+                            selectedCard = selectedCard,
+                            onCardPlayed = { card, opponent ->
+                                if (card.number == 1 &&
+                                    opponent != null &&
+                                    opponent.id != player.id
+                                ) {
+                                    showNumberPickerFor = card to opponent
+                                } else {
+                                    viewModel.makeMove(card, opponent, null)
+                                }
+                                selectedCard = null
+                            }
+                        )
+                    }
+                }
+
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.onSecondary,
+                    thickness = 2.dp
+                )
+
+                PlayerBoardView(
+                    player = player,
+                    selectedCard = selectedCard,
+                    activePlayerId = activePlayerId,
+                    onCardPlayed = { card ->
+                        viewModel.makeMove(card, player, null)
+                        selectedCard = null
+                    },
+                    allOpponentsProtected = allOpponentsProtected
+                )
+
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.onSecondary,
+                    thickness = 2.dp
+                )
+
+                PlayerCardsSection(
+                    hand = state.hand,
+                    selectedCard = selectedCard,
+                    onCardSelected = { card ->
+                        selectedCard =
+                            if (selectedCard?.id == card.id) null else card
+                    }
+                )
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.onSecondary, thickness = 2.dp)
-
-            PlayerBoardView(
-                player = player,
-                selectedCard = selectedCard,
-                activePlayerId = gameState.activePlayerId ?: 0,
-                onCardPlayed = { card ->
-                    viewModel.makeMove(card, player, null)
-                    selectedCard = null
-                },
-                allOpponentsProtected = allOpponentsProtected
-            )
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.onSecondary, thickness = 2.dp)
-
-            PlayerCardsSection(
-                hand = displayState.hand,
-                selectedCard = selectedCard,
-                onCardSelected = { card ->
-                    selectedCard = if (selectedCard?.id == card.id) null else card
-                }
-            )
-
         } ?: run {
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -136,37 +187,38 @@ fun GameScreen(
 
     showNumberPickerFor?.let { (card, opponent) ->
         NumberPickerDialog(
-            onNumberSelected = { guessingCardNumber ->
-                viewModel.makeMove(card, opponent, guessingCardNumber)
+            onNumberSelected = { guessedNumber ->
+                viewModel.makeMove(card, opponent, guessedNumber)
                 showNumberPickerFor = null
             },
             onDismiss = { showNumberPickerFor = null }
         )
     }
 
-    chancellorState?.let {
+    state.chancellorState?.let { chancellorState ->
         ChancellorCardSelectionDialog(
-            availableCards = it.availableCards,
-            onCardSelected = { selectedCard ->
-                viewModel.completeChancellorMove(selectedCard)
+            availableCards = chancellorState.availableCards,
+            onCardSelected = { chosenCard ->
+                viewModel.completeChancellorMove(chosenCard)
             },
             onDismiss = { }
         )
     }
 
-    priestRevealState?.let {
+    priestDialog?.let { event ->
+        println("DEBUG - GameScreen Priest dialog")
         PriestRevealDialog(
-            isRevealed = it.isRevealed,
-            targetPlayerName = it.targetPlayerName,
-            revealedCard = it.revealedCard,
-            onDismiss = { viewModel.dismissPriestReveal() }
+            isRevealed = true,
+            targetPlayerName = event.targetPlayerName,
+            revealedCardName = event.revealedCardName,
+            onDismiss = { priestDialog = null }
         )
     }
 
-    roundSummaryState?.let {
+    roundSummaryDialog?.let { event ->
         RoundSummaryDialog(
-            roundSummary = it,
-            onDismiss = { viewModel.clearRoundSummary() }
+            roundSummary = event.summary,
+            onDismiss = { roundSummaryDialog = null }
         )
     }
 }

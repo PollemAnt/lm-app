@@ -18,6 +18,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import org.example.models.CardType.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -174,25 +175,25 @@ fun ClickableCard(
 }
 
 fun canPlayCard(card: Card, secondCard: Card?): Boolean {
-    if (card.number == 5 || card.number == 7)
+    if (card.cardType == PRICE || card.cardType == KING)
         return checkCountessRequirement(secondCard)
-    return card.number != 9
+    return card.cardType != PRINCESS
 }
 
 fun checkCountessRequirement(secondCard: Card?): Boolean {
-    return secondCard?.number != 8
+    return secondCard?.cardType != COUNTESS
 }
 
 fun canPlayOnOwnBoard(card: Card, allOpponentsProtected: Boolean?): Boolean {
-    return when (card.number) {
-        0, 4, 5, 6, 8 -> true
+    return when (card.cardType) {
+        SPY, HANDMAID, PRICE, CHANCELLOR, COUNTESS -> true
         else -> allOpponentsProtected == true
     }
 }
 
 fun canPlayOnOpponent(card: Card): Boolean {
-    return when (card.number) {
-        1, 2, 3, 7, 5 -> true
+    return when (card.cardType) {
+        GUARD, PRIEST, BARON, KING, PRICE -> true
         else -> false
     }
 }

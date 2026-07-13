@@ -5,21 +5,29 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.models.CardPlayedFeedback
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
+import org.example.GameException
 import org.example.NetworkClient
 import org.example.models.Card
 import org.example.models.CardPlayedEvent
+import org.example.models.CardType.CHANCELLOR
+import org.example.models.CardType.PRIEST
 import org.example.models.GameSnapshot
 import org.example.models.Player
 import org.example.models.PlayerJoinEvent
 import org.example.models.RoundEndedEvent
 import org.example.models.RoundSummary
 import org.example.models.TurnChangedEvent
+import org.example.project.UI.screens.viewModel.GameUiEvent.ShowMessage
+import org.example.project.UI.screens.viewModel.GameUiEvent.ShowPriestReveal
+import org.example.project.UI.screens.viewModel.GameUiEvent.ShowRoundSummary
 import org.example.repository.GameRepository
 import org.example.repository.api.GameApi
 
@@ -28,66 +36,87 @@ data class ChancellorUIState(
     val availableCards: List<Card>
 )
 
-data class PriestRevealState(
-    val isRevealed: Boolean = false,
-    val targetPlayerName: String = "",
-    val revealedCard: Card? = null
-)
+sealed class GameUiEvent {
+    data class ShowMessage(val message: String) : GameUiEvent()
+    data class ShowRoundSummary(val summary: RoundSummary) : GameUiEvent()
+    data class ShowPriestReveal(
+        val targetPlayerName: String,
+        val revealedCardName: String
+    ) : GameUiEvent()
+}
 
 data class GameUiState(
     val isConnected: String? = null,
-    val message: String? = null,
     val player: Player? = null,
     val hand: List<Card> = emptyList(),
     val gameState: GameSnapshot? = null,
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val chancellorState: ChancellorUIState? = null
 )
+
 
 class GameViewModel(private val repository: GameRepository) : ViewModel() {
     constructor() : this(
         GameRepository(
             GameApi(
                 client = NetworkClient.httpClient,
-                "https://lm-serwer.onrender.com"
+                "https://lm-serwer.onrender.com"//"http://192.168.18.104:8080/"
             )
         )
     )
 
+    private val _uiEvents = MutableSharedFlow<GameUiEvent>()
+    val uiEvents = _uiEvents.asSharedFlow()
+
     private val _uiState = MutableStateFlow(GameUiState())
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
-
-    private val _chancellorState = MutableStateFlow<ChancellorUIState?>(null)
-    val chancellorState: StateFlow<ChancellorUIState?> = _chancellorState.asStateFlow()
-
-    private val _priestRevealState = MutableStateFlow<PriestRevealState?>(null)
-    val priestRevealState: StateFlow<PriestRevealState?> = _priestRevealState.asStateFlow()
-
-    private val _roundSummaryState = MutableStateFlow<RoundSummary?>(null)
-    val roundSummaryState: StateFlow<RoundSummary?> = _roundSummaryState.asStateFlow()
-
-    fun dismissPriestReveal() {
-        _priestRevealState.value = PriestRevealState(isRevealed = false)
-    }
 
     private fun observeEvents() {
         viewModelScope.launch {
             repository.eventsFlow.collect { event ->
-                val message = when (event) {
+
+                when (event) {
+
                     is CardPlayedEvent -> {
-                        prepareEventMessage(event)
+                        val message = prepareEventMessage(event)
+                        println("DEBUG -CardPlayedEvent: $message")
+                        _uiEvents.emit(ShowMessage(message))
                     }
 
-                    is TurnChangedEvent -> "Tura gracza: ${getPlayerName(event.activePlayerId)}"
-                    is PlayerJoinEvent -> "Gracz ${event.player.name} dołączył do gry."
+                    is TurnChangedEvent -> {
+                        val message = "Tura gracza: ${getPlayerName(event.activePlayerId)}"
+                        println("DEBUG -TurnChangedEvent: $message")
+                        _uiEvents.emit(ShowMessage(message))
+                    }
+
+                    is PlayerJoinEvent -> {
+                        val message = "Gracz ${event.player.name} dołączył do gry."
+                        println("DEBUG -PlayerJoinEvent: $message")
+                        _uiEvents.emit(ShowMessage(message))
+                    }
+
                     is RoundEndedEvent -> {
-                        "Koniec rundy! ${event.roundSummary.winnerName} wygrał rundę!"
-                        prepareSummaryRoundMessage(event)
+                        println("DEBUG -RoundEndedEvent")
+                        _uiEvents.emit(ShowRoundSummary(event.roundSummary))
                     }
                 }
-
-                _uiState.update { it.copy(message = message) }
             }
         }
+    }
+
+    private fun observePriestReveal() {
+        viewModelScope.launch {
+            repository.priestReveal.collect {
+                println("DEBUG - observePriestReveal")
+                _uiEvents.emit(
+                    ShowPriestReveal(
+                        getPlayerName(it.targetPlayerId),
+                        getCardName(it.revealedCardNumber)
+                    )
+                )
+            }
+        }
+
     }
 
     private fun prepareEventMessage(event: CardPlayedEvent): String {
@@ -97,14 +126,16 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
 
     private fun prepareSummaryRoundMessage(event: RoundEndedEvent): String {
         val winner = event.roundSummary.winnerName
-        _roundSummaryState.value = event.roundSummary
+        viewModelScope.launch {
+            _uiEvents.emit(ShowRoundSummary(event.roundSummary))
+        }
         return "Koniec rundy! $winner wygrał rundę!"
     }
 
     init {
         viewModelScope.launch {
             repository.snapshotFlow.collect { snapshot ->
-
+                println("snapshotFlow.collect")
                 _uiState.update { currentState ->
                     val currentPlayer = snapshot?.players?.find { it.id == currentState.player?.id }
                     currentState.copy(
@@ -115,14 +146,12 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
                 }
             }
         }
-        println("[EVENT] ViewModel: init started")
         observeEvents()
         connectToUpdates()
-        println("[EVENT] ViewModel: observeEvents called")
+        observePriestReveal()
+
         viewModelScope.launch {
             repository.ping()
-
-
         }
 
         viewModelScope.launch {
@@ -142,7 +171,6 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     fun join(name: String, onSuccess: (Player) -> Unit) {
         viewModelScope.launch {
             val player = repository.joinPlayer(name)
-            println("[DEBUG] ViewModel: Player joined: $player")
             _uiState.update { it.copy(player = player) }
             onSuccess(player)
         }
@@ -150,29 +178,40 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
 
     fun makeMove(card: Card, target: Player?, guessCardNumber: Int?) {
         viewModelScope.launch(Dispatchers.Default) {
-            if (card.number == 6) {
+            if (card.cardType == CHANCELLOR) {
 
-                _chancellorState.value =
-                    ChancellorUIState(availableCards = onChancellorPlayed(card, target))
+                _uiState.update {
+                    it.copy(
+                        chancellorState = ChancellorUIState(
+                            availableCards = onChancellorPlayed(
+                                card,
+                                target
+                            )
+                        )
+                    )
+                }
 
                 return@launch
 
-            } else if (card.number == 2 && target?.id != _uiState.value.player?.id) {
+            } else if (card.cardType == PRIEST && target?.id != _uiState.value.player?.id) {
+                _uiState.value.player ?: return@launch
+                println("DEBUG - makeMove ShowPriestReveal")
+                /* val revealedCard = onPriestPlayed(
+                     playerId = currentPlayer.id,
+                     targetId = target?.id ?: return@launch
+                 )
 
-                val revealedCard = onPriestPlayed(
-                    playerId = _uiState.value.player!!.id,
-                    targetId = target?.id ?: return@launch
-                )
 
-                if (revealedCard != null) {
-                    _priestRevealState.value = PriestRevealState(
-                        isRevealed = true,
-                        targetPlayerName = target.name,
-                        revealedCard = revealedCard.first()
-                    )
-                }
+                 if (revealedCard != null) {
+                     _uiEvents.emit(
+                         ShowPriestReveal(
+                             targetPlayerName = target.name,
+                             revealedCard = revealedCard.first()
+                         )
+                     )
+                 }*/
+
             }
-
             executeMoveInRepository(card, target, guessCardNumber)
         }
     }
@@ -188,7 +227,14 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
         playerId: Int,
         targetId: Int
     ): List<Card>? {
-        return repository.onPriestPlayed(playerId, targetId)
+
+        try {
+            return repository.onPriestPlayed(playerId, targetId)
+        } catch (e: GameException) {
+            println("DEBUG - onPriestPlayed GameException: ${e.message}")
+            _uiEvents.emit(ShowMessage(e.message ?: "Błąd"))
+        }
+        return null
     }
 
     private suspend fun executeMoveInRepository(
@@ -248,12 +294,52 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
             } do odrzucenia karty."
 
             is CardPlayedFeedback.PriestPlayed -> "Gracz ${getPlayerName(feedback.viewingPlayerId)} podejrzał kartę gracza ${
-                getPlayerName(feedback.targetPlayerId)}"
+                getPlayerName(feedback.targetPlayerId)
+            }"
 
             is CardPlayedFeedback.SpyPlayed -> "Gracz ${getPlayerName(feedback.spyPlayerId)} użył Szpiega."
             is CardPlayedFeedback.ChancellorPlayed -> "Gracz ${getPlayerName(feedback.playerId)} zagrał Kanclerza."
         }
         return message
+    }
+
+    fun completeChancellorMove(cardToKeep: Card) {
+        viewModelScope.launch {
+            val playerId = _uiState.value.player?.id ?: return@launch
+
+            try {
+                repository.completeChancellorMove(playerId, cardToKeep, playerId)
+
+                _uiState.update { it.copy(chancellorState = null) }
+
+            } catch (e: Exception) {
+                _uiEvents.emit(
+                    ShowMessage("Błąd podczas wyboru karty: ${e.message}")
+                )
+                _uiState.update {
+                    it.copy(chancellorState = null)
+                }
+
+            }
+        }
+    }
+
+
+    fun connectToUpdates() {
+        viewModelScope.launch { repository.connectToUpdates(_uiState.value.player?.id ?: 0) }
+    }
+
+    fun reset() {
+        viewModelScope.launch {
+            repository.reset()
+            _uiState.value = GameUiState()
+            repository.ping()
+        }
+    }
+
+    private fun getPlayerName(playerId: Int): String {
+        val player = _uiState.value.gameState?.players?.find { it.id == playerId }
+        return player?.name ?: "Nieznany gracz"
     }
 
     private fun getCardName(cardNumber: Int): String {
@@ -271,46 +357,5 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
                 "Nieznana karta"
             }
         }
-    }
-
-
-    fun completeChancellorMove(cardToKeep: Card) {
-        viewModelScope.launch {
-            val playerId = _uiState.value.player?.id ?: return@launch
-
-            try {
-                println("[DEBUG] Chancellor completeChancellorMove cardToKeep: $cardToKeep")
-
-                repository.completeChancellorMove(playerId, cardToKeep, playerId)
-
-                _chancellorState.value = null
-                repository.refreshSnapshot()
-
-            } catch (e: Exception) {
-                _uiState.update { it.copy(message = "Błąd podczas wyboru karty: ${e.message}") }
-                _chancellorState.value = null
-            }
-        }
-    }
-
-    fun connectToUpdates() {
-        viewModelScope.launch { repository.connectToUpdates() }
-    }
-
-    fun reset() {
-        viewModelScope.launch {
-            repository.reset()
-            _uiState.value = GameUiState()
-            repository.ping()
-        }
-    }
-
-    private fun getPlayerName(playerId: Int): String {
-        val player = _uiState.value.gameState?.players?.find { it.id == playerId }
-        return player?.name ?: "Nieznany gracz"
-    }
-
-    fun clearRoundSummary() {
-        _roundSummaryState.value = null
     }
 }

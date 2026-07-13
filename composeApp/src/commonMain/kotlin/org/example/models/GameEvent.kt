@@ -11,6 +11,13 @@ sealed interface ServerEvent
 sealed interface GameEventBase :ServerEvent
 
 @Serializable
+@SerialName("priest_reveal")
+data class PriestRevealEvent(
+    val targetPlayerId: Int,
+    val revealedCardNumber: Int
+) : ServerEvent
+
+@Serializable
 @SerialName("card_played")
 data class CardPlayedEvent(
     val playerId: Int,

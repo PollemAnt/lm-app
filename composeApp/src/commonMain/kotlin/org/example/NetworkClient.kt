@@ -3,12 +3,24 @@ package org.example
 import com.example.models.CardPlayedFeedback
 import com.example.models.MoveResult
 import io.ktor.client.*
+import io.ktor.client.call.body
+import io.ktor.client.plugins.ClientRequestException
+import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.*
+
+@Serializable
+data class ErrorResponse(
+    val message: String
+)
+
+class GameException(message: String) : Exception(message)
 
 object NetworkClient {
     val httpClient = HttpClient {
@@ -36,6 +48,34 @@ object NetworkClient {
                     }
                 }
             })
+        }
+
+        expectSuccess = true
+
+        HttpResponseValidator {
+
+            handleResponseExceptionWithRequest { exception, _ ->
+
+                when (exception) {
+
+                    is ClientRequestException -> {
+                        val response = exception.response
+                        println("DEBUG - ClientRequestException: ${response.status} ${exception.message}")
+                        try {
+                            val error = response.body<ErrorResponse>()
+                            throw GameException(error.message)
+                        } catch (e: Exception) {
+                            throw GameException("Błąd ${response.status} ${e.message}")
+                        }
+                    }
+
+                    is ServerResponseException -> {
+                        throw GameException("Błąd serwera")
+                    }
+
+                    else -> throw exception
+                }
+            }
         }
 
         install(HttpTimeout) {

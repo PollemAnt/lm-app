@@ -25,6 +25,7 @@ import kotlinx.serialization.modules.subclass
 import org.example.NetworkClient
 import org.example.models.GameConfig
 import org.example.models.GameSnapshotEvent
+import org.example.models.PriestRevealEvent
 import org.example.models.RoundEndedEvent
 import org.example.models.ServerEvent
 
@@ -42,10 +43,12 @@ class GameApi(
         }
     }
 
-    suspend fun connectToUpdates(onEvent: suspend (ServerEvent) -> Unit) {
+    suspend fun connectToUpdates(playerId: Int,onEvent: suspend (ServerEvent) -> Unit) {
         client.webSocket(
-            urlString = baseUrl.replace("https", "wss") + "/updates"
+            urlString = baseUrl.replace("http", "ws") + "/updates?playerId=$playerId"
         ) {
+
+            println("DEBUG [EVENT] - WebSocket connected to $baseUrl/updates")
 
             for (frame in incoming) {
                 println("[EVENT] API: $frame")
@@ -69,6 +72,7 @@ class GameApi(
             subclass(RoundEndedEvent::class)
 
             subclass(GameSnapshotEvent::class)
+            subclass(PriestRevealEvent::class)
         }
     }
 
@@ -94,14 +98,11 @@ class GameApi(
         return client.get("$baseUrl/player/$playerId").body()
     }
 
-    suspend fun getPlayerHandForPriest(playerId: Int,targetId: Int): List<Card>? {
-        val response = client.post("$baseUrl/getPlayerHandForPriest") {
+    suspend fun getPlayerHandForPriest(playerId: Int,targetId: Int): List<Card> {
+        return client.post("$baseUrl/getPlayerHandForPriest") {
             contentType(ContentType.Application.Json)
             setBody(PriestRequest(playerId, targetId))
-        }
-
-        return response.body()
-
+        }.body()
     }
 
     suspend fun makeMove(
@@ -110,7 +111,7 @@ class GameApi(
         targetPlayerId: Int?,
         guessCardNumber: Int?
     ) {
-        val response = client.post("$baseUrl/move") {
+        client.post("$baseUrl/move") {
             contentType(ContentType.Application.Json)
             setBody(MoveRequest(playerId, card, targetPlayerId, guessCardNumber))
         }
@@ -121,7 +122,7 @@ class GameApi(
         cardToKeep: Card,
         targetPlayerId: Int?,
     ) {
-        val response = client.post("$baseUrl/complete_chancellor") {
+        client.post("$baseUrl/complete_chancellor") {
             contentType(ContentType.Application.Json)
             setBody(MoveRequest(playerId, cardToKeep, targetPlayerId, null))
         }

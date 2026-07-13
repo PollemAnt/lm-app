@@ -14,12 +14,16 @@ import org.example.models.GameEventBase
 import org.example.models.GameSnapshot
 import org.example.models.GameSnapshotEvent
 import org.example.models.Player
+import org.example.models.PriestRevealEvent
 
 class GameRepository(
     private val api: GameApi
 ) {
     private val _snapshotFlow = MutableStateFlow<GameSnapshot?>(null)
     val snapshotFlow: StateFlow<GameSnapshot?> = _snapshotFlow.asStateFlow()
+
+    private val _priestReveal = MutableSharedFlow<PriestRevealEvent>()
+    val priestReveal = _priestReveal.asSharedFlow()
 
     private val _isConnected = MutableStateFlow<String?>(null)
     val isConnected: StateFlow<String?> = _isConnected
@@ -30,9 +34,10 @@ class GameRepository(
     )
     val eventsFlow: SharedFlow<GameEventBase> = _eventsFlow.asSharedFlow()
 
-    suspend fun connectToUpdates() {
+    suspend fun connectToUpdates(playerId: Int) {
         try {
-            api.connectToUpdates { event ->
+            api.connectToUpdates(playerId) { event ->
+                println("Debug [EVENT] Repository: $event")
                 when (event) {
 
                     is GameSnapshotEvent -> {
@@ -41,6 +46,11 @@ class GameRepository(
 
                     is GameEventBase -> {
                         _eventsFlow.tryEmit(event)
+                    }
+
+                    is PriestRevealEvent -> {
+                        _priestReveal.emit(event)
+                        println("Repository priestReveal $_priestReveal")
                     }
                 }
             }
@@ -75,7 +85,7 @@ class GameRepository(
         api.completeChancellorMove(playerId, cardToKeep, targetId)
     }
 
-    suspend fun onPriestPlayed(playerId: Int, targetId: Int): List<Card>? {
+    suspend fun onPriestPlayed(playerId: Int, targetId: Int): List<Card> {
         return api.getPlayerHandForPriest(playerId, targetId)
     }
 
