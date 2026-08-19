@@ -1,7 +1,8 @@
 package org.example.project.UI.screens
 
-import OpponentsArea
-import PlayerBoardView
+import org.example.project.UI.gameAreas.OpponentsArea
+import org.example.project.UI.gameAreas.PlayerBoardView
+import org.example.project.UI.gameAreas.PlayerCardsSection
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +30,7 @@ import org.example.models.Card
 import org.example.models.Player
 import org.example.project.UI.gameAreas.GameMessageBar
 import org.example.project.UI.gameAreas.PlayerCardsSection
+import org.example.project.UI.gameAreas.canPlayOnOpponent
 import org.example.project.UI.screens.dialogs.ChancellorCardSelectionDialog
 import org.example.project.UI.screens.dialogs.NumberPickerDialog
 import org.example.project.UI.screens.dialogs.PriestRevealDialog
@@ -49,7 +52,7 @@ fun GameScreen(
 
     var priestDialog by remember { mutableStateOf<GameUiEvent.ShowPriestReveal?>(null) }
     var roundSummaryDialog by remember { mutableStateOf<GameUiEvent.ShowRoundSummary?>(null) }
-    var message by remember { mutableStateOf<String?>(null) }
+    var messages by remember { mutableStateOf<List<String>>(emptyList()) }
 
     LaunchedEffect(viewModel) {
         println("DEBUG - collector started in screen $screenId")
@@ -58,7 +61,7 @@ fun GameScreen(
             when (event) {
 
                 is GameUiEvent.ShowMessage -> {
-                    message = event.message
+                    messages = (messages + event.message).takeLast(20)
                 }
 
                 is GameUiEvent.ShowPriestReveal -> {
@@ -85,7 +88,7 @@ fun GameScreen(
         )
 
         GameMessageBar(
-            message = message.toString(),
+            messages = messages,
             remainingCards = state.gameState?.cards?.size ?: 0
         )
 
@@ -167,6 +170,28 @@ fun GameScreen(
                             if (selectedCard?.id == card.id) null else card
                     }
                 )
+
+                selectedCard?.let { card ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp)
+                            .background(
+                                MaterialTheme.colorScheme.tertiaryContainer,
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (canPlayOnOpponent(card))
+                                "Wybierz gracza, aby użyć ${card.name}"
+                            else "Kliknij na swoją planszę, aby zagrać ${card.name}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                }
             }
         } ?: run {
             Box(

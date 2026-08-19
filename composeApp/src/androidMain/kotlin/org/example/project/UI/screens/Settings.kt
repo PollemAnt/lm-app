@@ -50,7 +50,8 @@ import org.example.project.UI.screens.viewModel.SettingsViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Settings(
-    viewModel: SettingsViewModel = viewModel()
+    viewModel: SettingsViewModel = viewModel(),
+    onReset: () -> Unit = {}
 ) {
     val configState by viewModel.configState.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -72,7 +73,7 @@ fun Settings(
             .fillMaxSize()
             .background(color = MaterialTheme.colorScheme.surface),
     ) {
-        SettingsButtons(isLoading, viewModel)
+        SettingsButtons(isLoading, viewModel, onReset)
         if (isLoading && configState == null) {
             Box(
                 modifier = Modifier
@@ -126,7 +127,8 @@ fun Settings(
 @Composable
 private fun SettingsButtons(
     isLoading: Boolean,
-    viewModel: SettingsViewModel
+    viewModel: SettingsViewModel,
+    onReset: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -154,7 +156,10 @@ private fun SettingsButtons(
 
 
         TextButton(
-            onClick = { viewModel.reset() },
+            onClick = {
+                viewModel.reset()
+                onReset()
+            },
             enabled = !isLoading,
             modifier = Modifier.weight(1f),
             colors = ButtonDefaults.textButtonColors(

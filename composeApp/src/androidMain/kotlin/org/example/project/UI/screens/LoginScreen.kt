@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuDefaults.outlinedTextFieldColors
 import androidx.compose.material3.HorizontalDivider
@@ -33,14 +34,16 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import org.example.project.UI.screens.viewModel.GameUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
+    state: GameUiState,
     onJoin: (String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
-    val isButtonEnabled = name.isNotBlank() && name.length >= 2
+    val isButtonEnabled = name.isNotBlank() && name.length >= 2 && !state.isLoading
 
 
     Box(
@@ -85,6 +88,18 @@ fun LoginScreen(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSecondary
                 )
+
+                state.gameConfig?.let { config ->
+                    val currentPlayers = state.gameState?.players?.size ?: 0
+                    Text(
+                        text = "Gracze w lobby: $currentPlayers / ${config.maxPlayers}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = if (currentPlayers >= config.maxPlayers)
+                            MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.secondary
+                    )
+                }
             }
 
             OutlinedTextField(
@@ -112,6 +127,18 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            state.errorMessage?.let { error ->
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                )
+            }
+
             Button(
                 onClick = { onJoin(name) },
                 modifier = Modifier
@@ -124,12 +151,20 @@ fun LoginScreen(
                     contentColor = MaterialTheme.colorScheme.surface
                 )
             ) {
-                Text(
-                    text = "Rozpocznij grę",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.secondary
-                )
+                if (state.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.secondary,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        text = "Rozpocznij grę",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
             }
 
             Text(

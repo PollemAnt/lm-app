@@ -10,13 +10,14 @@ import org.example.models.CardCount
 import org.example.models.GameConfig
 import org.example.repository.GameRepository
 import org.example.repository.api.GameApi
+import org.example.project.Constants
 
 class SettingsViewModel(private val repository: GameRepository) : ViewModel() {
     constructor() : this(
         GameRepository(
             GameApi(
                 client = NetworkClient.httpClient,
-                "https://lm-serwer.onrender.com"//"http://192.168.18.104:8080/"
+                Constants.BASE_URL
             )
         )
     )
@@ -102,8 +103,16 @@ class SettingsViewModel(private val repository: GameRepository) : ViewModel() {
 
     fun reset() {
         viewModelScope.launch {
-            repository.reset()
-            repository.ping()
+            _isLoading.value = true
+            try {
+                repository.reset()
+                repository.ping()
+                _errorMessage.value = "Serwer zresetowany pomyślnie"
+            } catch (e: Exception) {
+                _errorMessage.value = "Błąd resetu: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
 

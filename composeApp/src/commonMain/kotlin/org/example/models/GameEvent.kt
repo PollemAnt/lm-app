@@ -1,6 +1,6 @@
 package org.example.models
 
-import com.example.models.CardPlayedFeedback
+
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

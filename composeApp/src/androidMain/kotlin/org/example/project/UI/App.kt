@@ -165,6 +165,7 @@ fun App(viewModel: GameViewModel = viewModel()) {
                 ) {
                     composable(Screen.Login.route) {
                         LoginScreen(
+                            state = state,
                             onJoin = { name ->
                                  viewModel.join(name) { player ->
                                 navController.navigate(Screen.Game.route)
@@ -199,7 +200,14 @@ fun App(viewModel: GameViewModel = viewModel()) {
                     }
 
                     composable(Screen.Settings.route) {
-                        Settings()
+                        Settings(
+                            onReset = {
+                                viewModel.reset()
+                                navController.navigate(Screen.Login.route) {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            }
+                        )
                     }
                 }
             }

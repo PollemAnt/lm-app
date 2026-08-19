@@ -1,6 +1,6 @@
 package org.example.project.UI.gameAreas
 
-import ClickableCard
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row

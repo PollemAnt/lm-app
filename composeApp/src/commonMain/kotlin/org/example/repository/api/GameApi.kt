@@ -23,6 +23,7 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
 import org.example.NetworkClient
+import org.example.project.Constants
 import org.example.models.GameConfig
 import org.example.models.GameSnapshotEvent
 import org.example.models.PriestRevealEvent
@@ -31,7 +32,7 @@ import org.example.models.ServerEvent
 
 class GameApi(
     private val client: HttpClient = NetworkClient.httpClient,
-    private val baseUrl: String = "https://lm-serwer.onrender.com"
+    private val baseUrl: String = Constants.BASE_URL
 ) {
 
     suspend fun ping(): String {
@@ -51,20 +52,32 @@ class GameApi(
             println("DEBUG [EVENT] - WebSocket connected to $baseUrl/updates")
 
             for (frame in incoming) {
-                println("[EVENT] API: $frame")
-                val text = (frame as? Frame.Text)?.readText() ?: "Brak.."
+                val text = (frame as? Frame.Text)?.readText() ?: continue
+                println("DEBUG [WS RECEIVE] Raw text: $text")
                 try {
                     val event = json.decodeFromString<ServerEvent>(text)
+                    println("DEBUG [WS RECEIVE] Parsed event: ${event::class.simpleName}")
                     onEvent(event)
 
                 } catch (e: Exception) {
-                    println("[EVENT] API Błąd parsowania eventu: $text  error: $e ")
+                    println("DEBUG [WS ERROR] Failed to parse: $text | Error: $e")
                 }
             }
         }
     }
 
     val eventModule = SerializersModule {
+        polymorphic(org.example.models.CardPlayedFeedback::class) {
+            subclass(org.example.models.CardPlayedFeedback.Standard::class)
+            subclass(org.example.models.CardPlayedFeedback.SpyPlayed::class)
+            subclass(org.example.models.CardPlayedFeedback.GuardPlayed::class)
+            subclass(org.example.models.CardPlayedFeedback.PriestPlayed::class)
+            subclass(org.example.models.CardPlayedFeedback.BaronPlayed::class)
+            subclass(org.example.models.CardPlayedFeedback.HandmaidPlayed::class)
+            subclass(org.example.models.CardPlayedFeedback.PrincePlayed::class)
+            subclass(org.example.models.CardPlayedFeedback.ChancellorPlayed::class)
+            subclass(org.example.models.CardPlayedFeedback.KingPlayed::class)
+        }
         polymorphic(ServerEvent::class) {
             subclass(PlayerJoinEvent::class)
             subclass(CardPlayedEvent::class)

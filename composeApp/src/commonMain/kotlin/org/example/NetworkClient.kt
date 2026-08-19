@@ -1,7 +1,7 @@
 package org.example
 
-import com.example.models.CardPlayedFeedback
-import com.example.models.MoveResult
+import org.example.models.CardPlayedFeedback
+import org.example.models.MoveResult
 import io.ktor.client.*
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ClientRequestException

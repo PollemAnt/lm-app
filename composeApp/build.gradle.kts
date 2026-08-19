@@ -13,9 +13,10 @@ plugins {
 }
 
 kotlin {
+    jvmToolchain(libs.versions.java.version.get().toInt())
     androidTarget {
         compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_11)
+            jvmTarget.set(JvmTarget.fromTarget(libs.versions.java.version.get()))
         }
     }
     
@@ -38,7 +39,7 @@ kotlin {
     }
     
     sourceSets {
-        val desktopMain by getting
+        val desktopMain = sourceSets.getByName("desktopMain")
 
         androidMain.dependencies {
             implementation(compose.preview)
@@ -78,7 +79,7 @@ kotlin {
     }
 }
 
-android {
+extensions.configure<com.android.build.api.dsl.ApplicationExtension>("android") {
     namespace = "org.example.project"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
@@ -100,8 +101,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.toVersion(libs.versions.java.version.get())
+        targetCompatibility = JavaVersion.toVersion(libs.versions.java.version.get())
     }
 }
 

@@ -3,7 +3,7 @@ package org.example.project.UI.screens.viewModel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.models.CardPlayedFeedback
+import org.example.models.CardPlayedFeedback
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +19,10 @@ import org.example.models.Card
 import org.example.models.CardPlayedEvent
 import org.example.models.CardType.CHANCELLOR
 import org.example.models.CardType.PRIEST
+import io.ktor.client.call.body
+import io.ktor.client.plugins.ClientRequestException
+import org.example.models.ErrorResponse
+import org.example.models.GameConfig
 import org.example.models.GameSnapshot
 import org.example.models.Player
 import org.example.models.PlayerJoinEvent
@@ -30,6 +34,7 @@ import org.example.project.UI.screens.viewModel.GameUiEvent.ShowPriestReveal
 import org.example.project.UI.screens.viewModel.GameUiEvent.ShowRoundSummary
 import org.example.repository.GameRepository
 import org.example.repository.api.GameApi
+import org.example.project.Constants
 
 @Serializable
 data class ChancellorUIState(
@@ -50,7 +55,9 @@ data class GameUiState(
     val player: Player? = null,
     val hand: List<Card> = emptyList(),
     val gameState: GameSnapshot? = null,
+    val gameConfig: GameConfig? = null,
     val isLoading: Boolean = false,
+    val errorMessage: String? = null,
     val chancellorState: ChancellorUIState? = null
 )
 
@@ -60,7 +67,7 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
         GameRepository(
             GameApi(
                 client = NetworkClient.httpClient,
-                "https://lm-serwer.onrender.com"//"http://192.168.18.104:8080/"
+                Constants.BASE_URL
             )
         )
     )
@@ -84,9 +91,7 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
                     }
 
                     is TurnChangedEvent -> {
-                        val message = "Tura gracza: ${getPlayerName(event.activePlayerId)}"
-                        println("DEBUG -TurnChangedEvent: $message")
-                        _uiEvents.emit(ShowMessage(message))
+                        // Ignorujemy komunikat o zmianie tury zgodnie z życzeniem użytkownika
                     }
 
                     is PlayerJoinEvent -> {
@@ -98,6 +103,8 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
                     is RoundEndedEvent -> {
                         println("DEBUG -RoundEndedEvent")
                         _uiEvents.emit(ShowRoundSummary(event.roundSummary))
+                        val winner = event.roundSummary.winnerName
+                        _uiEvents.emit(ShowMessage("Koniec rundy! Zwycięzca: $winner"))
                     }
                 }
             }
@@ -120,16 +127,7 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     }
 
     private fun prepareEventMessage(event: CardPlayedEvent): String {
-        val feedback = event.feedback
-        return createFeedbackMessage(feedback)
-    }
-
-    private fun prepareSummaryRoundMessage(event: RoundEndedEvent): String {
-        val winner = event.roundSummary.winnerName
-        viewModelScope.launch {
-            _uiEvents.emit(ShowRoundSummary(event.roundSummary))
-        }
-        return "Koniec rundy! $winner wygrał rundę!"
+        return createFeedbackMessage(event.feedback)
     }
 
     init {
@@ -147,7 +145,6 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
             }
         }
         observeEvents()
-        connectToUpdates()
         observePriestReveal()
 
         viewModelScope.launch {
@@ -160,6 +157,17 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
             }
 
         }
+
+        viewModelScope.launch {
+            try {
+                val config = repository.getGameConfig()
+                _uiState.update { it.copy(gameConfig = config) }
+            } catch (e: Exception) {
+                println("Błąd pobierania konfiguracji: $e")
+            }
+        }
+
+        loadInitialState()
     }
 
     fun loadInitialState() {
@@ -170,49 +178,55 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
 
     fun join(name: String, onSuccess: (Player) -> Unit) {
         viewModelScope.launch {
-            val player = repository.joinPlayer(name)
-            _uiState.update { it.copy(player = player) }
-            onSuccess(player)
+            _uiState.update { it.copy(errorMessage = null, isLoading = true) }
+            try {
+                val player = repository.joinPlayer(name)
+                _uiState.update { it.copy(player = player, hand = player.hand, isLoading = false) }
+                // Reconnect with correct ID to receive private events and ensure clean state
+                connectToUpdates()
+                onSuccess(player)
+            } catch (e: ClientRequestException) {
+                val errorBody = e.response.body<ErrorResponse>()
+                _uiState.update { it.copy(errorMessage = errorBody.message, isLoading = false) }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        errorMessage = "Błąd połączenia: ${e.message}",
+                        isLoading = false
+                    )
+                }
+            }
         }
     }
 
     fun makeMove(card: Card, target: Player?, guessCardNumber: Int?) {
         viewModelScope.launch(Dispatchers.Default) {
-            if (card.cardType == CHANCELLOR) {
+            val currentState = _uiState.value
+            val currentPlayerId = currentState.player?.id ?: return@launch
+            val activePlayerId = currentState.gameState?.activePlayerId
 
-                _uiState.update {
-                    it.copy(
-                        chancellorState = ChancellorUIState(
-                            availableCards = onChancellorPlayed(
-                                card,
-                                target
-                            )
-                        )
-                    )
-                }
-
+            if (activePlayerId != null && activePlayerId != currentPlayerId) {
+                _uiEvents.emit(ShowMessage("To nie jest Twoja tura!"))
                 return@launch
-
-            } else if (card.cardType == PRIEST && target?.id != _uiState.value.player?.id) {
-                _uiState.value.player ?: return@launch
-                println("DEBUG - makeMove ShowPriestReveal")
-                /* val revealedCard = onPriestPlayed(
-                     playerId = currentPlayer.id,
-                     targetId = target?.id ?: return@launch
-                 )
-
-
-                 if (revealedCard != null) {
-                     _uiEvents.emit(
-                         ShowPriestReveal(
-                             targetPlayerName = target.name,
-                             revealedCard = revealedCard.first()
-                         )
-                     )
-                 }*/
-
             }
-            executeMoveInRepository(card, target, guessCardNumber)
+
+            try {
+                if (card.cardType == CHANCELLOR) {
+                    val cards = onChancellorPlayed(card, target)
+                    _uiState.update {
+                        it.copy(
+                            chancellorState = ChancellorUIState(availableCards = cards)
+                        )
+                    }
+                    return@launch
+                } else if (card.cardType == PRIEST && target?.id != currentPlayerId) {
+                    println("DEBUG - makeMove ShowPriestReveal")
+                }
+                executeMoveInRepository(card, target, guessCardNumber)
+            } catch (e: Exception) {
+                println("DEBUG - makeMove Error: ${e.message}")
+                _uiEvents.emit(ShowMessage(e.message ?: "Błąd podczas ruchu"))
+            }
         }
     }
 
@@ -252,53 +266,56 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
         val message = when (feedback) {
             is CardPlayedFeedback.Standard -> feedback.message
             is CardPlayedFeedback.GuardPlayed -> {
+                val guesser = getPlayerName(feedback.guessingPlayerId)
+                val target = getPlayerName(feedback.targetPlayerId)
+                val cardName = getCardName(feedback.guessedCardNumber)
                 if (feedback.wasCorrect) {
-                    "Gracz ${getPlayerName(feedback.guessingPlayerId)} poprawnie odgadł kartę! Gracz ${
-                        getPlayerName(
-                            feedback.targetPlayerId
-                        )
-                    } odpada z gry."
+                    "$guesser zagrał Strażnika na $target i zgadł! ($cardName). $target odpada."
                 } else {
-                    "Gracz ${getPlayerName(feedback.guessingPlayerId)} nie odgadł karty gracza ${
-                        getPlayerName(
-                            feedback.targetPlayerId
-                        )
-                    }. Zgadywana karta: ${getCardName(feedback.guessedCardNumber)}"
+                    "$guesser zagrał Strażnika na $target, ale nie zgadł. Zgadywał: $cardName."
                 }
             }
 
             is CardPlayedFeedback.BaronPlayed -> {
+                val p1 = getPlayerName(feedback.player1Id)
+                val p2 = getPlayerName(feedback.player2Id)
                 when {
-                    feedback.winnerId != null && feedback.loserId != null ->
-                        "Gracz ${getPlayerName(feedback.winnerId)} wygrał pojedynek! Gracz ${
-                            getPlayerName(
-                                feedback.loserId
-                            )
-                        } odpada z gry."
+                    feedback.winnerId != null && feedback.loserId != null -> {
+                        val winner = getPlayerName(feedback.winnerId)
+                        val loser = getPlayerName(feedback.loserId)
+                        "Baron: $p1 i $p2 porównali karty. $winner wygrał, $loser odpada."
+                    }
 
-                    else -> "Pojedynek Barona zakończył się remisem."
+                    else -> "Baron: $p1 i $p2 porównali karty. Remis!"
                 }
             }
 
-            is CardPlayedFeedback.HandmaidPlayed -> "Gracz ${getPlayerName(feedback.protectedPlayerId)} jest teraz chroniony."
-            is CardPlayedFeedback.KingPlayed -> "Gracz ${getPlayerName(feedback.player1Id)} zamienił się kartami z graczem ${
-                getPlayerName(
-                    feedback.player2Id
-                )
-            }."
+            is CardPlayedFeedback.HandmaidPlayed ->
+                "Gracz ${getPlayerName(feedback.protectedPlayerId)} zagrał Służącą i jest chroniony do następnej tury."
 
-            is CardPlayedFeedback.PrincePlayed -> "Gracz ${getPlayerName(feedback.playerId)} zmusił gracza ${
-                getPlayerName(
-                    feedback.targetId
-                )
-            } do odrzucenia karty."
+            is CardPlayedFeedback.KingPlayed ->
+                "Król: ${getPlayerName(feedback.player1Id)} zamienił się kartami z graczem ${
+                    getPlayerName(
+                        feedback.player2Id
+                    )
+                }."
 
-            is CardPlayedFeedback.PriestPlayed -> "Gracz ${getPlayerName(feedback.viewingPlayerId)} podejrzał kartę gracza ${
-                getPlayerName(feedback.targetPlayerId)
-            }"
+            is CardPlayedFeedback.PrincePlayed -> {
+                val actor = getPlayerName(feedback.playerId)
+                val target = getPlayerName(feedback.targetId)
+                "$actor zagrał Księcia na $target. $target odrzuca kartę i dobiera nową."
+            }
 
-            is CardPlayedFeedback.SpyPlayed -> "Gracz ${getPlayerName(feedback.spyPlayerId)} użył Szpiega."
-            is CardPlayedFeedback.ChancellorPlayed -> "Gracz ${getPlayerName(feedback.playerId)} zagrał Kanclerza."
+            is CardPlayedFeedback.PriestPlayed ->
+                "Kapłan: ${getPlayerName(feedback.viewingPlayerId)} podejrzał kartę gracza ${
+                    getPlayerName(
+                        feedback.targetPlayerId
+                    )
+                }."
+
+            is CardPlayedFeedback.SpyPlayed -> "Gracz ${getPlayerName(feedback.spyPlayerId)} zagrał Szpiega."
+
+            is CardPlayedFeedback.ChancellorPlayed -> "Gracz ${getPlayerName(feedback.playerId)} zagrał Kanclerza i wybiera karty."
         }
         return message
     }
@@ -309,24 +326,30 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
 
             try {
                 repository.completeChancellorMove(playerId, cardToKeep, playerId)
-
                 _uiState.update { it.copy(chancellorState = null) }
-
             } catch (e: Exception) {
+                println("DEBUG - completeChancellorMove Error: ${e.message}")
                 _uiEvents.emit(
                     ShowMessage("Błąd podczas wyboru karty: ${e.message}")
                 )
                 _uiState.update {
                     it.copy(chancellorState = null)
                 }
-
             }
         }
     }
 
 
+    private var connectionJob: kotlinx.coroutines.Job? = null
+
     fun connectToUpdates() {
-        viewModelScope.launch { repository.connectToUpdates(_uiState.value.player?.id ?: 0) }
+        val playerId = _uiState.value.player?.id ?: 0
+        if (playerId == 0) return
+
+        connectionJob?.cancel()
+        connectionJob = viewModelScope.launch {
+            repository.connectToUpdates(playerId)
+        }
     }
 
     fun reset() {
@@ -345,6 +368,7 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     private fun getCardName(cardNumber: Int): String {
         return when (cardNumber) {
             0 -> "Szpieg"
+            1 -> "Strażnik"
             2 -> "Kapłan"
             3 -> "Baron"
             4 -> "Służąca"
@@ -354,7 +378,7 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
             8 -> "Hrabina"
             9 -> "Księżniczka"
             else -> {
-                "Nieznana karta"
+                "Nieznana karta: $cardNumber"
             }
         }
     }

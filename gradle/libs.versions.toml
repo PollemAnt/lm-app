@@ -1,5 +1,5 @@
 [versions]
-agp = "8.10.1"
+agp = "9.3.1"
 
 android-compileSdk = "36"
 android-minSdk = "24"
@@ -16,11 +16,13 @@ composeMultiplatform = "1.9.0"
 
 material3 = "1.4.0"
 junit = "4.13.2"
-kotlin = "2.2.21"
+kotlin = "2.4.10"
 kotlinx-coroutines = "1.10.2"
 
 ktor-version = "3.2.3"
 materialIconsCore = "1.7.8"
+java-version = "25"
+
 navigation-version = "2.9.6"
 ktorClientCio = "2.3.4"
 
@@ -42,6 +44,7 @@ androidx-lifecycle-viewmodelCompose = { module = "org.jetbrains.androidx.lifecyc
 androidx-lifecycle-runtimeCompose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidx-lifecycle" }
 androidx-navigation = { module = "androidx.navigation:navigation-compose" , version.ref = "navigation-version"}
 androidx-material-icons-core = { module = "androidx.compose.material:material-icons-core", version.ref = "materialIconsCore" }
+ktor-server-call-logging = { module = "io.ktor:ktor-server-call-logging", version.ref = "ktor-version" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
