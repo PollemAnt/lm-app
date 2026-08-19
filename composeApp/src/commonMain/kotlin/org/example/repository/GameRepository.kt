@@ -7,14 +7,14 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
-import org.example.models.Card
+import org.example.shared.domain.Card
 import org.example.repository.api.GameApi
-import org.example.models.GameConfig
-import org.example.models.GameEventBase
-import org.example.models.GameSnapshot
-import org.example.models.GameSnapshotEvent
-import org.example.models.Player
-import org.example.models.PriestRevealEvent
+import org.example.shared.domain.GameConfig
+import org.example.shared.protocol.GameEventBase
+import org.example.shared.domain.GameSnapshot
+import org.example.shared.protocol.GameSnapshotEvent
+import org.example.shared.domain.Player
+import org.example.shared.protocol.PriestRevealEvent
 
 class GameRepository(
     private val api: GameApi

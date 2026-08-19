@@ -1,24 +1,22 @@
 package org.example
 
-import org.example.models.CardPlayedFeedback
-import org.example.models.MoveResult
-import io.ktor.client.*
+import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.ServerResponseException
-import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.serialization.kotlinx.json.*
-import kotlinx.serialization.Serializable
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.modules.*
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.polymorphic
+import kotlinx.serialization.modules.subclass
+import org.example.shared.protocol.CardPlayedFeedback
+import org.example.shared.protocol.ErrorResponse
+import org.example.shared.protocol.MoveResult
 
-@Serializable
-data class ErrorResponse(
-    val message: String
-)
 
 class GameException(message: String) : Exception(message)
 

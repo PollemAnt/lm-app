@@ -1,7 +1,6 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -42,21 +41,26 @@ kotlin {
         val desktopMain = sourceSets.getByName("desktopMain")
 
         androidMain.dependencies {
+            implementation(libs.koin.androidx.compose)
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.androidx.ui)
             implementation(libs.androidx.ui.graphics)
             implementation(libs.androidx.ui.tooling)
-            implementation(libs.androidx.material.icons.core)
-            implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
-            implementation(libs.androidx.navigation)
         }
 
         iosMain.dependencies{}
 
         commonMain.dependencies {
+            implementation(project(":shared"))
+            implementation(libs.koin.core)
+            implementation(libs.koin.compose)
+            implementation(libs.koin.compose.viewmodel)
+            implementation(libs.androidx.material.icons.core)
+            implementation(libs.androidx.navigation)
+            implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)

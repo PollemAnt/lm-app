@@ -1,164 +1,213 @@
 package org.example.project
-/*
+
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color.Companion.Green
+import androidx.compose.ui.graphics.Color.Companion.Red
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import org.example.models.CardPlayedEvent
-import org.example.models.GameSnapshot
-import org.example.models.Player
-import org.example.models.PlayerJoinEvent
-import org.example.models.TurnChangedEvent
+import androidx.compose.ui.unit.sp
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import org.example.project.UI.screens.GameScreen
+import org.example.project.UI.screens.LoginScreen
+import org.example.project.UI.screens.Settings
+import org.example.project.UI.screens.viewModel.GameViewModel
+import org.koin.compose.viewmodel.koinViewModel
+import ui.theme.AppColorScheme
 
+sealed class Screen(val route: String) {
+    data object Login : Screen("login")
+    data object Game : Screen("game")
+    data object Settings : Screen("settings")
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun App() {
+fun App(viewModel: GameViewModel = koinViewModel()) {
+    val navController = rememberNavController()
+    val state by viewModel.uiState.collectAsState()
 
-    val api = remember { ApiService("https://lm-serwer.onrender.com") }
-    val coroutineScope = rememberCoroutineScope()
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = currentBackStackEntry?.destination
+    val currentRoute = currentDestination?.route
 
-    var player by remember { mutableStateOf<Player?>(null) }
-    var gameState by remember { mutableStateOf<GameSnapshot?>(null) }
-    var message by remember { mutableStateOf<String?>(null) }
-    var isConnected by remember { mutableStateOf<String?>(null) }
+    val showSettingsIcon = currentRoute in listOf(Screen.Login.route, Screen.Game.route)
 
-    LaunchedEffect(Unit) {
-        isConnected = api.ping()
+    val screenTitle = when (currentRoute) {
+        Screen.Login.route -> "Logowanie"
+        Screen.Game.route -> "Love Letter"
+        Screen.Settings.route -> "Ustawienia"
+        else -> "Love Letter"
     }
 
     LaunchedEffect(Unit) {
-        api.connectToUpdates { event ->
-            when (event) {
-
-                is CardPlayedEvent -> coroutineScope.launch {
-                    gameState = api.getState()
-                    println("DRAW CARD")
-                }
-
-                is PlayerJoinEvent -> coroutineScope.launch {
-                    println("PLAYER JOINED")
-                    gameState = api.getState()
-                }
-
-                is TurnChangedEvent -> coroutineScope.launch {
-                    gameState = api.getState()
-                }
-            }
-        }
+         viewModel.loadInitialState()
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(top = 64.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    MaterialTheme(
+        colorScheme = AppColorScheme
     ) {
-
-        Text(isConnected ?: "Brak polaczenia z serwerem")
-
-        Button(onClick = {
-            CoroutineScope(Dispatchers.Main).launch { api.getReset() }
-        }) {
-            Text("Reset")
-        }
-
-        if (player == null) {
-            var name by remember { mutableStateOf("") }
-
-            OutlinedTextField(
-                value = name,
-                onValueChange = { name = it },
-                label = { Text("Twoje imię: ") })
-            Button(onClick = {
-                coroutineScope.launch {
-                    player = api.join(name)
-                    gameState = api.getState()
-                }
-            }) {
-                Text("Dołącz do gry")
-            }
-        } else {
-            // ekran gry
-            Text("Jesteś: ${player!!.name} (id=${player!!.id})")
-
-
-            Text(
-                "Aktywny gracz: ${gameState?.activePlayerId} ${
-                    gameState?.players?.get(
-                        gameState?.activePlayerId!!
-                    )
-                }"
-            )
-
-            //OpponentsArea(currentPlayer = player!!, players = gameState?.players ?: emptyList())
-
-            Spacer(Modifier.height(16.dp))
-
-           /* PlayerHand(
-                player!!,
-                opponents = gameState?.players?.filter { it.id != player!!.id } ?: emptyList(),
-                onDropCard =
-                    { card, opponent ->
-                        coroutineScope.launch {
-                            val res = api.makeMove(player!!.id, card, opponent.id)
-                            message = res.ok
-                            gameState = api.getState()
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Row(
+                            modifier = Modifier.height(IntrinsicSize.Min),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Email,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
+                            Text(
+                                text = screenTitle,
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
                         }
-                    })*/
+                    },
+                    actions = {
+                        Box(
+                            modifier = Modifier
+                               .padding(end = 8.dp)
+                        ) {
+                            val connectionStatus = state.isConnected ?: "Rozłączony"
+                            val isConnected = state.isConnected != null
 
-            Spacer(Modifier.height(16.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            if (isConnected) Green
+                                            else Red
+                                        )
+                                )
+                                Text(
+                                    text = connectionStatus,
+                                    fontSize = 12.sp,
+                                    color = if (isConnected) MaterialTheme.colorScheme.secondary
+                                    else MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
 
-            Row {
-                Button(onClick = {
-                    coroutineScope.launch {
-                        val res =
-                            api.makeMove(player!!.id, card = player!!.hand[0], targetPlayerId = 1)
-                        message = res.ok ?: res.error
-                        gameState = api.getState()
+                        if (showSettingsIcon) {
+                            IconButton(
+                                onClick = { navController.navigate(Screen.Settings.route) },
+                                modifier = Modifier.padding(end = 4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = "Ustawienia",
+                                    tint = MaterialTheme.colorScheme.secondary
+                                )
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        titleContentColor = MaterialTheme.colorScheme.secondary,
+                        actionIconContentColor = MaterialTheme.colorScheme.secondary
+                    )
+
+                )
+            }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                NavHost(
+                    navController = navController,
+                    startDestination = Screen.Login.route,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    composable(Screen.Login.route) {
+                        LoginScreen(
+                            state = state,
+                            onJoin = { name ->
+                                 viewModel.join(name) {
+                                navController.navigate(Screen.Game.route)
+                                 }
+                            }
+                        )
                     }
-                }) {
-                    Text("Wykonaj ruch")
-                }
 
-                Spacer(Modifier.height(16.dp))
+                    composable(Screen.Game.route) {
+                        if (state.player == null) {
+                            LaunchedEffect(Unit) {
+                                navController.navigate(Screen.Login.route) {
+                                    popUpTo(Screen.Login.route) { inclusive = true }
+                                }
 
-                Button(onClick = {
-                    coroutineScope.launch {
-                        val card = api.drawCard(player!!.id)
-                        message = "Dobrałeś kartę: ${card.name}"
-                        val hand = api.getHand(player!!.id)
-                        player = player!!.copy(hand = hand)
+                            }
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    CircularProgressIndicator()
+                                    Text("Przekierowywanie do logowania...")
+                                }
+                            }
+                        } else {
+                            GameScreen(viewModel = viewModel)
+                        }
                     }
-                }) {
-                    Text("Dobierz kartę")
+
+                    composable(Screen.Settings.route) {
+                        Settings(
+                            onReset = {
+                                viewModel.reset()
+                                navController.navigate(Screen.Login.route) {
+                                    popUpTo(0) { inclusive = true }
+                                }
+                            }
+                        )
+                    }
                 }
             }
-
-            Spacer(Modifier.height(16.dp))
-
-
-            message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
         }
     }
-}*/
-
+}

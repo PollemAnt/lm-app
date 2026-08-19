@@ -11,8 +11,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            org.example.project.UI.App()
-           // App()
+            App()
         }
     }
 }

@@ -18,7 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
-@Preview(showBackground = true)
+@Preview
 @Composable
 fun ColorPreview_Preview() {
     ColorPreview()

@@ -2,33 +2,40 @@ package org.example.repository.api
 
 
 import io.ktor.client.HttpClient
-import io.ktor.client.call.*
+import io.ktor.client.call.body
 import io.ktor.client.plugins.websocket.webSocket
-import io.ktor.client.request.*
+import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
-import io.ktor.http.*
+import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import org.example.models.CardPlayedEvent
-import org.example.models.GameSnapshot
-import org.example.models.Player
-import org.example.models.PlayerJoinEvent
-import org.example.models.PlayerJoinRequest
-import org.example.models.TurnChangedEvent
-import org.example.models.Card
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
 import org.example.NetworkClient
 import org.example.project.Constants
-import org.example.models.GameConfig
-import org.example.models.GameSnapshotEvent
-import org.example.models.PriestRevealEvent
-import org.example.models.RoundEndedEvent
-import org.example.models.ServerEvent
+import org.example.shared.domain.Card
+import org.example.shared.domain.GameConfig
+import org.example.shared.domain.GameSnapshot
+import org.example.shared.domain.Player
+import org.example.shared.protocol.CardPlayedEvent
+import org.example.shared.protocol.CardPlayedFeedback
+import org.example.shared.protocol.DrawRequest
+import org.example.shared.protocol.GameSnapshotEvent
+import org.example.shared.protocol.MoveRequest
+import org.example.shared.protocol.PlayerJoinEvent
+import org.example.shared.protocol.PlayerJoinRequest
+import org.example.shared.protocol.PriestRequest
+import org.example.shared.protocol.PriestRevealEvent
+import org.example.shared.protocol.RoundEndedEvent
+import org.example.shared.protocol.ServerEvent
+import org.example.shared.protocol.TurnChangedEvent
 
 class GameApi(
     private val client: HttpClient = NetworkClient.httpClient,
@@ -67,16 +74,16 @@ class GameApi(
     }
 
     val eventModule = SerializersModule {
-        polymorphic(org.example.models.CardPlayedFeedback::class) {
-            subclass(org.example.models.CardPlayedFeedback.Standard::class)
-            subclass(org.example.models.CardPlayedFeedback.SpyPlayed::class)
-            subclass(org.example.models.CardPlayedFeedback.GuardPlayed::class)
-            subclass(org.example.models.CardPlayedFeedback.PriestPlayed::class)
-            subclass(org.example.models.CardPlayedFeedback.BaronPlayed::class)
-            subclass(org.example.models.CardPlayedFeedback.HandmaidPlayed::class)
-            subclass(org.example.models.CardPlayedFeedback.PrincePlayed::class)
-            subclass(org.example.models.CardPlayedFeedback.ChancellorPlayed::class)
-            subclass(org.example.models.CardPlayedFeedback.KingPlayed::class)
+        polymorphic(CardPlayedFeedback::class) {
+            subclass(CardPlayedFeedback.Standard::class)
+            subclass(CardPlayedFeedback.SpyPlayed::class)
+            subclass(CardPlayedFeedback.GuardPlayed::class)
+            subclass(CardPlayedFeedback.PriestPlayed::class)
+            subclass(CardPlayedFeedback.BaronPlayed::class)
+            subclass(CardPlayedFeedback.HandmaidPlayed::class)
+            subclass(CardPlayedFeedback.PrincePlayed::class)
+            subclass(CardPlayedFeedback.ChancellorPlayed::class)
+            subclass(CardPlayedFeedback.KingPlayed::class)
         }
         polymorphic(ServerEvent::class) {
             subclass(PlayerJoinEvent::class)
@@ -167,16 +174,3 @@ class GameApi(
     }
 }
 
-@Serializable
-data class MoveRequest(
-    val playerId: Int,
-    val card: Card,
-    val targetPlayerId: Int?,
-    val guessCardNumber: Int?
-)
-
-@Serializable
-data class DrawRequest(val playerId: Int, val card: Card)
-
-@Serializable
-data class PriestRequest(val playerId: Int, val targetId: Int)
