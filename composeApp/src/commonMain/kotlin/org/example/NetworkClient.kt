@@ -16,12 +16,16 @@ import kotlinx.serialization.modules.subclass
 import org.example.shared.protocol.CardPlayedFeedback
 import org.example.shared.protocol.ErrorResponse
 import org.example.shared.protocol.MoveResult
-
+import io.ktor.client.plugins.cookies.HttpCookies
+import io.ktor.client.plugins.cookies.AcceptAllCookiesStorage
 
 class GameException(message: String) : Exception(message)
 
 object NetworkClient {
     val httpClient = HttpClient {
+        install(HttpCookies) {
+            storage = AcceptAllCookiesStorage()
+        }
         install(ContentNegotiation) {
             json(Json {
                 ignoreUnknownKeys = true
