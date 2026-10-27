@@ -160,8 +160,16 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     }
 
     fun loadInitialState() {
+        val playerId = _uiState.value.player?.id
         viewModelScope.launch {
-            repository.loadInitialState()
+            try {
+                repository.loadInitialState(playerId)
+            } catch (e: Exception) {
+                println("Błąd ładowania stanu gry: $e")
+                _uiState.update {
+                    it.copy(errorMessage = "Błąd: ${e.message}")
+                }
+            }
         }
     }
 
@@ -173,6 +181,7 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
                 _uiState.update { it.copy(player = player, hand = player.hand, isLoading = false) }
                 // Reconnect with correct ID to receive private events and ensure clean state
                 connectToUpdates()
+                loadInitialState()
                 onSuccess(player)
             } catch (e: ClientRequestException) {
                 val errorBody = e.response.body<ErrorResponse>()
@@ -345,9 +354,14 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
 
     fun reset() {
         viewModelScope.launch {
-            repository.reset()
-            _uiState.value = GameUiState()
-            repository.ping()
+            try {
+                repository.reset()
+                _uiState.value = GameUiState()
+                repository.ping()
+            } catch (e: Exception) {
+                println("Błąd resetowania: $e")
+                _uiEvents.emit(ShowMessage("Błąd resetowania: ${e.message}"))
+            }
         }
     }
 

@@ -68,7 +68,13 @@ object NetworkClient {
                     }
 
                     is ServerResponseException -> {
-                        throw GameException("Błąd serwera")
+                        val response = exception.response
+                        try {
+                            val error = response.body<ErrorResponse>()
+                            throw GameException(error.message)
+                        } catch (_: Exception) {
+                            throw GameException("Błąd serwera")
+                        }
                     }
 
                     else -> throw exception

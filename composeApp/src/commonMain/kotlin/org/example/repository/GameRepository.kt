@@ -63,8 +63,8 @@ class GameRepository(
         _isConnected.value = api.ping()
     }
 
-    suspend fun loadInitialState() {
-        _snapshotFlow.value = api.getState()
+    suspend fun loadInitialState(playerId: Int? = null) {
+        _snapshotFlow.value = api.getState(playerId)
     }
 
     suspend fun joinPlayer(name: String): Player {

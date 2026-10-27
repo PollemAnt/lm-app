@@ -110,8 +110,9 @@ class GameApi(
         }.body()
     }
 
-    suspend fun getState(): GameSnapshot {
-        return client.get("$baseUrl/state").body()
+    suspend fun getState(playerId: Int? = null): GameSnapshot {
+        val url = if (playerId != null) "$baseUrl/state?playerId=$playerId" else "$baseUrl/state"
+        return client.get(url).body()
     }
 
     suspend fun getPlayer(playerId: Int): Player {
