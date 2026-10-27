@@ -16,6 +16,7 @@ import kotlinx.serialization.modules.subclass
 import org.example.shared.protocol.CardPlayedFeedback
 import org.example.shared.protocol.ErrorResponse
 import org.example.shared.protocol.MoveResult
+import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.plugins.cookies.AcceptAllCookiesStorage
 
@@ -23,6 +24,10 @@ class GameException(message: String) : Exception(message)
 
 object NetworkClient {
     val httpClient = HttpClient {
+        install(HttpRequestRetry) {
+            retryOnServerErrors(maxRetries = 3)
+            exponentialDelay()
+        }
         install(HttpCookies) {
             storage = AcceptAllCookiesStorage()
         }
@@ -92,6 +97,8 @@ object NetworkClient {
             socketTimeoutMillis = 15000
         }
 
-        install(WebSockets)
+        install(WebSockets) {
+            pingIntervalMillis = 10000L // 10 sekund ping do serwera, by podtrzymać połączenie przez NAT/Proxy
+        }
     }
 }

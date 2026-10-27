@@ -35,27 +35,37 @@ class GameRepository(
     val eventsFlow: SharedFlow<GameEventBase> = _eventsFlow.asSharedFlow()
 
     suspend fun connectToUpdates(playerId: Int) {
-        try {
-            api.connectToUpdates(playerId) { event ->
-                println("Debug [EVENT] Repository: $event")
-                when (event) {
-
-                    is GameSnapshotEvent -> {
-                        _snapshotFlow.value = event.snapshot
-                    }
-
-                    is GameEventBase -> {
-                        _eventsFlow.tryEmit(event)
-                    }
-
-                    is PriestRevealEvent -> {
-                        _priestReveal.emit(event)
-                        println("Repository priestReveal $_priestReveal")
+        var isReconnecting = false
+        while (true) {
+            try {
+                if (isReconnecting) {
+                    println("[EVENT] Repository: Próba ponownego połączenia...")
+                    kotlinx.coroutines.delay(2000)
+                }
+                api.connectToUpdates(playerId) { event ->
+                    println("Debug [EVENT] Repository: $event")
+                    when (event) {
+                        is GameSnapshotEvent -> {
+                            _snapshotFlow.value = event.snapshot
+                        }
+                        is GameEventBase -> {
+                            _eventsFlow.tryEmit(event)
+                        }
+                        is PriestRevealEvent -> {
+                            _priestReveal.emit(event)
+                            println("Repository priestReveal $_priestReveal")
+                        }
                     }
                 }
+                // Jeśli wyjdziemy z api.connectToUpdates normalnie (co w web socketach zazwyczaj znaczy że server zamknął normalnie gniazdo), też chcemy wznowić pętlę.
+                isReconnecting = true
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                println("[EVENT] Repository: WebSocket connection cancelled.")
+                throw e
+            } catch (e: Exception) {
+                println("[EVENT] Repository: WebSocket error (reconnecting in 2s): ${e.message}")
+                isReconnecting = true
             }
-        } catch (e: Exception) {
-            println("[EVENT] Repository: WebSocket error: ${e.message}")
         }
     }
 
