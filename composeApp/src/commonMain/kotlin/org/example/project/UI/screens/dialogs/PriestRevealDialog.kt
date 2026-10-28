@@ -1,4 +1,4 @@
-package org.example.project.UI.screens.dialogs
+package org.example.project.ui.screens.dialogs
 
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button

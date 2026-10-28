@@ -1,4 +1,4 @@
-package org.example.project.UI.screens
+package org.example.project.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.sp
 import org.koin.compose.viewmodel.koinViewModel
 import org.example.shared.domain.CardCount
 import org.example.shared.domain.GameConfig
-import org.example.project.UI.screens.viewModel.SettingsViewModel
+import org.example.project.ui.screens.viewModel.SettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

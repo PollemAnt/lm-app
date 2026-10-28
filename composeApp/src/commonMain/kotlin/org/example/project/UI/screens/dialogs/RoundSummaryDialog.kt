@@ -1,4 +1,4 @@
-package org.example.project.UI.screens.dialogs
+package org.example.project.ui.screens.dialogs
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement

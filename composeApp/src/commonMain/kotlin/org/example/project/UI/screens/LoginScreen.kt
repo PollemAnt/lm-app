@@ -1,4 +1,4 @@
-package org.example.project.UI.screens
+package org.example.project.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -34,7 +34,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import org.example.project.UI.screens.viewModel.GameUiState
+import org.example.project.ui.screens.viewModel.GameUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
