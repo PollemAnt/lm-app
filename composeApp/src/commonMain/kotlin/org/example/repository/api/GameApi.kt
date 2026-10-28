@@ -31,6 +31,7 @@ import org.example.shared.protocol.GameSnapshotEvent
 import org.example.shared.protocol.MoveRequest
 import org.example.shared.protocol.PlayerJoinEvent
 import org.example.shared.protocol.PlayerJoinRequest
+import org.example.shared.protocol.PlayerRejoinRequest
 import org.example.shared.protocol.PriestRequest
 import org.example.shared.protocol.PriestRevealEvent
 import org.example.shared.protocol.RoundEndedEvent
@@ -107,6 +108,13 @@ class GameApi(
         return client.post("$baseUrl/join") {
             contentType(ContentType.Application.Json)
             setBody(PlayerJoinRequest(name))
+        }.body()
+    }
+    
+    suspend fun rejoin(playerId: Int): Player {
+        return client.post("$baseUrl/rejoin") {
+            contentType(ContentType.Application.Json)
+            setBody(PlayerRejoinRequest(playerId))
         }.body()
     }
 

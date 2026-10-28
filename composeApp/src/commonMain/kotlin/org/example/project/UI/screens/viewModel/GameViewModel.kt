@@ -32,6 +32,7 @@ import org.example.shared.protocol.ErrorResponse
 import org.example.shared.protocol.PlayerJoinEvent
 import org.example.shared.protocol.RoundEndedEvent
 import org.example.shared.protocol.TurnChangedEvent
+import org.example.storage.GameStorage
 
 @Serializable
 data class ChancellorUIState(
@@ -59,7 +60,16 @@ data class GameUiState(
 )
 
 
-class GameViewModel(private val repository: GameRepository) : ViewModel() {
+class GameViewModel(
+    private val repository: GameRepository,
+    private val gameStorage: GameStorage
+) : ViewModel() {
+
+    fun getSavedPlayerId(): Int? = gameStorage.getPlayerId()
+
+    fun clearSavedSession() {
+        gameStorage.clearPlayerId()
+    }
 
     private val _uiEvents = MutableSharedFlow<GameUiEvent>()
     val uiEvents = _uiEvents.asSharedFlow()
@@ -178,8 +188,8 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
             _uiState.update { it.copy(errorMessage = null, isLoading = true) }
             try {
                 val player = repository.joinPlayer(name)
+                gameStorage.savePlayerId(player.id)
                 _uiState.update { it.copy(player = player, hand = player.hand, isLoading = false) }
-                // Reconnect with correct ID to receive private events and ensure clean state
                 connectToUpdates()
                 loadInitialState()
                 onSuccess(player)
@@ -193,6 +203,34 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
                         isLoading = false
                     )
                 }
+            }
+        }
+    }
+
+    fun rejoin(
+        playerId: Int,
+        onSuccess: (Player) -> Unit,
+        onError: ((Exception) -> Unit)? = null
+    ) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(errorMessage = null, isLoading = true) }
+            try {
+                val player = repository.rejoin(playerId)
+                gameStorage.savePlayerId(player.id)
+                _uiState.update { it.copy(player = player, hand = player.hand, isLoading = false) }
+                connectToUpdates()
+                loadInitialState()
+                onSuccess(player)
+            } catch (e: Exception) {
+                gameStorage.clearPlayerId()
+                _uiState.update {
+                    it.copy(
+                        errorMessage = "Nie udało się wznowić sesji: ${e.message}",
+                        isLoading = false
+                    )
+                }
+                println("Błąd podczas wznawiania: $e")
+                onError?.invoke(e)
             }
         }
     }
@@ -355,6 +393,7 @@ class GameViewModel(private val repository: GameRepository) : ViewModel() {
     fun reset() {
         viewModelScope.launch {
             try {
+                gameStorage.clearPlayerId()
                 repository.reset()
                 _uiState.value = GameUiState()
                 repository.ping()

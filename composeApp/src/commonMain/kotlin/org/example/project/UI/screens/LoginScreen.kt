@@ -45,6 +45,35 @@ fun LoginScreen(
     var name by remember { mutableStateOf("") }
     val isButtonEnabled = name.isNotBlank() && name.length >= 2 && !state.isLoading
 
+    if (state.isLoading && state.player == null && name.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.surface,
+                            MaterialTheme.colorScheme.surfaceTint
+                        )
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
+                Text(
+                    text = "Wznawianie sesji gry...",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.secondary,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+        return
+    }
 
     Box(
         modifier = Modifier

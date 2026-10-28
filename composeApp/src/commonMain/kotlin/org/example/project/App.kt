@@ -71,7 +71,22 @@ fun App(viewModel: GameViewModel = koinViewModel()) {
     }
 
     LaunchedEffect(Unit) {
-         viewModel.loadInitialState()
+        val savedPlayerId = viewModel.getSavedPlayerId()
+        if (savedPlayerId != null) {
+            viewModel.rejoin(
+                playerId = savedPlayerId,
+                onSuccess = {
+                    navController.navigate(Screen.Game.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                },
+                onError = {
+                    // Rejoin failed, saved ID is cleared automatically inside GameViewModel.
+                }
+            )
+        } else {
+            viewModel.loadInitialState()
+        }
     }
 
     MaterialTheme(

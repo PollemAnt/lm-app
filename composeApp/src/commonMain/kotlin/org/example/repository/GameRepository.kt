@@ -81,6 +81,10 @@ class GameRepository(
         val player = api.join(name)
         return player
     }
+    
+    suspend fun rejoin(playerId: Int): Player {
+        return api.rejoin(playerId)
+    }
 
     suspend fun makeMove(
         playerId: Int,

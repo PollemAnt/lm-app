@@ -55,6 +55,8 @@ kotlin {
 
         commonMain.dependencies {
             implementation(project(":shared"))
+            implementation(libs.multiplatformSettings)
+            implementation(libs.multiplatformSettingsNoArg)
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)

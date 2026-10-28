@@ -11,10 +11,14 @@ import org.example.repository.api.GameApi
 import org.example.project.UI.screens.viewModel.GameViewModel
 import org.example.project.UI.screens.viewModel.SettingsViewModel
 import org.example.project.Constants
+import org.example.storage.GameStorage
 
 val appModule = module {
     // Provide HttpClient from NetworkClient
     single { NetworkClient.httpClient }
+
+    // Storage
+    singleOf(::GameStorage)
     
     // API
     single { GameApi(get(), Constants.BASE_URL) }
