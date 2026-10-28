@@ -16,6 +16,13 @@ import kotlinx.serialization.modules.subclass
 import org.example.shared.protocol.CardPlayedFeedback
 import org.example.shared.protocol.ErrorResponse
 import org.example.shared.protocol.MoveResult
+import org.example.shared.protocol.ServerEvent
+import org.example.shared.protocol.PlayerJoinEvent
+import org.example.shared.protocol.CardPlayedEvent
+import org.example.shared.protocol.TurnChangedEvent
+import org.example.shared.protocol.RoundEndedEvent
+import org.example.shared.protocol.GameSnapshotEvent
+import org.example.shared.protocol.PriestRevealEvent
 import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.cookies.HttpCookies
 import io.ktor.client.plugins.cookies.AcceptAllCookiesStorage
@@ -23,6 +30,39 @@ import io.ktor.client.plugins.cookies.AcceptAllCookiesStorage
 class GameException(message: String) : Exception(message)
 
 object NetworkClient {
+    val json = Json {
+        ignoreUnknownKeys = true
+        prettyPrint = true
+        isLenient = true
+        classDiscriminator = "type"
+
+        serializersModule = SerializersModule {
+            polymorphic(CardPlayedFeedback::class) {
+                subclass(CardPlayedFeedback.Standard::class)
+                subclass(CardPlayedFeedback.GuardPlayed::class)
+                subclass(CardPlayedFeedback.BaronPlayed::class)
+                subclass(CardPlayedFeedback.HandmaidPlayed::class)
+                subclass(CardPlayedFeedback.KingPlayed::class)
+                subclass(CardPlayedFeedback.PrincePlayed::class)
+                subclass(CardPlayedFeedback.PriestPlayed::class)
+                subclass(CardPlayedFeedback.SpyPlayed::class)
+                subclass(CardPlayedFeedback.ChancellorPlayed::class)
+            }
+            polymorphic(MoveResult::class) {
+                subclass(MoveResult.Success::class)
+                subclass(MoveResult.Error::class)
+            }
+            polymorphic(ServerEvent::class) {
+                subclass(PlayerJoinEvent::class)
+                subclass(CardPlayedEvent::class)
+                subclass(TurnChangedEvent::class)
+                subclass(RoundEndedEvent::class)
+                subclass(GameSnapshotEvent::class)
+                subclass(PriestRevealEvent::class)
+            }
+        }
+    }
+
     val httpClient = HttpClient {
         install(HttpRequestRetry) {
             retryOnServerErrors(maxRetries = 3)
@@ -32,29 +72,7 @@ object NetworkClient {
             storage = AcceptAllCookiesStorage()
         }
         install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-                prettyPrint = true
-                isLenient = true
-
-                serializersModule = SerializersModule {
-                    polymorphic(CardPlayedFeedback::class) {
-                        subclass(CardPlayedFeedback.Standard::class)
-                        subclass(CardPlayedFeedback.GuardPlayed::class)
-                        subclass(CardPlayedFeedback.BaronPlayed::class)
-                        subclass(CardPlayedFeedback.HandmaidPlayed::class)
-                        subclass(CardPlayedFeedback.KingPlayed::class)
-                        subclass(CardPlayedFeedback.PrincePlayed::class)
-                        subclass(CardPlayedFeedback.PriestPlayed::class)
-                        subclass(CardPlayedFeedback.SpyPlayed::class)
-                        subclass(CardPlayedFeedback.ChancellorPlayed::class)
-                    }
-                    polymorphic(MoveResult::class) {
-                        subclass(MoveResult.Success::class)
-                        subclass(MoveResult.Error::class)
-                    }
-                }
-            })
+            json(json)
         }
 
         expectSuccess = true

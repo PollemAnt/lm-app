@@ -1,5 +1,4 @@
-package org.example.project.UI.screens.viewModel
-
+package org.example.project.ui.screens.viewModel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,20 +13,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import org.example.GameException
-import org.example.project.UI.screens.viewModel.GameUiEvent.ShowMessage
-import org.example.project.UI.screens.viewModel.GameUiEvent.ShowPriestReveal
-import org.example.project.UI.screens.viewModel.GameUiEvent.ShowRoundSummary
+import org.example.project.ui.screens.viewModel.GameUiEvent.ShowMessage
+import org.example.project.ui.screens.viewModel.GameUiEvent.ShowPriestReveal
+import org.example.project.ui.screens.viewModel.GameUiEvent.ShowRoundSummary
 import org.example.repository.GameRepository
 import org.example.shared.domain.Card
+import org.example.shared.domain.CardNameResolver
 import org.example.shared.domain.CardType.CHANCELLOR
-import org.example.shared.domain.CardType.PRIEST
 import org.example.shared.domain.GameConfig
 import org.example.shared.domain.GameSnapshot
 import org.example.shared.domain.Player
 import org.example.shared.domain.RoundSummary
 import org.example.shared.protocol.CardPlayedEvent
-import org.example.shared.protocol.CardPlayedFeedback
 import org.example.shared.protocol.ErrorResponse
 import org.example.shared.protocol.PlayerJoinEvent
 import org.example.shared.protocol.RoundEndedEvent
@@ -55,10 +52,10 @@ data class GameUiState(
     val gameState: GameSnapshot? = null,
     val gameConfig: GameConfig? = null,
     val isLoading: Boolean = false,
+    val isRestoringSession: Boolean = false,
     val errorMessage: String? = null,
     val chancellorState: ChancellorUIState? = null
 )
-
 
 class GameViewModel(
     private val repository: GameRepository,
@@ -74,18 +71,20 @@ class GameViewModel(
     private val _uiEvents = MutableSharedFlow<GameUiEvent>()
     val uiEvents = _uiEvents.asSharedFlow()
 
-    private val _uiState = MutableStateFlow(GameUiState())
+    private val _uiState = MutableStateFlow(GameUiState(isRestoringSession = gameStorage.getPlayerId() != null))
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
 
     private fun observeEvents() {
         viewModelScope.launch {
             repository.eventsFlow.collect { event ->
-
                 when (event) {
-
                     is CardPlayedEvent -> {
-                        val message = prepareEventMessage(event)
-                        println("DEBUG -CardPlayedEvent: $message")
+                        val message = GameMessageFormatter.format(
+                            feedback = event.feedback,
+                            getPlayerName = ::getPlayerName,
+                            getCardName = CardNameResolver::getCardName
+                        )
+                        println("DEBUG - CardPlayedEvent: $message")
                         _uiEvents.emit(ShowMessage(message))
                     }
 
@@ -95,12 +94,12 @@ class GameViewModel(
 
                     is PlayerJoinEvent -> {
                         val message = "Gracz ${event.player.name} dołączył do gry."
-                        println("DEBUG -PlayerJoinEvent: $message")
+                        println("DEBUG - PlayerJoinEvent: $message")
                         _uiEvents.emit(ShowMessage(message))
                     }
 
                     is RoundEndedEvent -> {
-                        println("DEBUG -RoundEndedEvent")
+                        println("DEBUG - RoundEndedEvent")
                         _uiEvents.emit(ShowRoundSummary(event.roundSummary))
                         val winner = event.roundSummary.winnerName
                         _uiEvents.emit(ShowMessage("Koniec rundy! Zwycięzca: $winner"))
@@ -117,16 +116,11 @@ class GameViewModel(
                 _uiEvents.emit(
                     ShowPriestReveal(
                         getPlayerName(it.targetPlayerId),
-                        getCardName(it.revealedCardNumber)
+                        CardNameResolver.getCardName(it.revealedCardNumber)
                     )
                 )
             }
         }
-
-    }
-
-    private fun prepareEventMessage(event: CardPlayedEvent): String {
-        return createFeedbackMessage(event.feedback)
     }
 
     init {
@@ -154,7 +148,6 @@ class GameViewModel(
             repository.isConnected.collect { isConnected ->
                 _uiState.update { it.copy(isConnected = isConnected) }
             }
-
         }
 
         viewModelScope.launch {
@@ -213,11 +206,11 @@ class GameViewModel(
         onError: ((Exception) -> Unit)? = null
     ) {
         viewModelScope.launch {
-            _uiState.update { it.copy(errorMessage = null, isLoading = true) }
+            _uiState.update { it.copy(errorMessage = null, isRestoringSession = true) }
             try {
                 val player = repository.rejoin(playerId)
                 gameStorage.savePlayerId(player.id)
-                _uiState.update { it.copy(player = player, hand = player.hand, isLoading = false) }
+                _uiState.update { it.copy(player = player, hand = player.hand, isRestoringSession = false) }
                 connectToUpdates()
                 loadInitialState()
                 onSuccess(player)
@@ -226,7 +219,7 @@ class GameViewModel(
                 _uiState.update {
                     it.copy(
                         errorMessage = "Nie udało się wznowić sesji: ${e.message}",
-                        isLoading = false
+                        isRestoringSession = false
                     )
                 }
                 println("Błąd podczas wznawiania: $e")
@@ -255,8 +248,6 @@ class GameViewModel(
                         )
                     }
                     return@launch
-                } else if (card.cardType == PRIEST && target?.id != currentPlayerId) {
-                    println("DEBUG - makeMove ShowPriestReveal")
                 }
                 executeMoveInRepository(card, target, guessCardNumber)
             } catch (e: Exception) {
@@ -273,20 +264,6 @@ class GameViewModel(
         return repository.onChancellorPlayed(player!!.id, card)
     }
 
-    private suspend fun onPriestPlayed(
-        playerId: Int,
-        targetId: Int
-    ): List<Card>? {
-
-        try {
-            return repository.onPriestPlayed(playerId, targetId)
-        } catch (e: GameException) {
-            println("DEBUG - onPriestPlayed GameException: ${e.message}")
-            _uiEvents.emit(ShowMessage(e.message ?: "Błąd"))
-        }
-        return null
-    }
-
     private suspend fun executeMoveInRepository(
         card: Card,
         target: Player?,
@@ -295,67 +272,6 @@ class GameViewModel(
         val playerId = _uiState.value.player?.id ?: return
         val targetId = target?.id
         return repository.makeMove(playerId, card, targetId, guessCardNumber)
-    }
-
-    private fun createFeedbackMessage(feedback: CardPlayedFeedback): String {
-
-        val message = when (feedback) {
-            is CardPlayedFeedback.Standard -> feedback.message
-            is CardPlayedFeedback.GuardPlayed -> {
-                val guesser = getPlayerName(feedback.guessingPlayerId)
-                val target = getPlayerName(feedback.targetPlayerId)
-                val cardName = getCardName(feedback.guessedCardNumber)
-                if (feedback.wasCorrect) {
-                    "$guesser zagrał Strażnika na $target i zgadł! ($cardName). $target odpada."
-                } else {
-                    "$guesser zagrał Strażnika na $target, ale nie zgadł. Zgadywał: $cardName."
-                }
-            }
-
-            is CardPlayedFeedback.BaronPlayed -> {
-                val p1 = getPlayerName(feedback.player1Id)
-                val p2 = getPlayerName(feedback.player2Id)
-                val winnerId = feedback.winnerId
-                val loserId = feedback.loserId
-                when {
-                    winnerId != null && loserId != null -> {
-                        val winner = getPlayerName(winnerId)
-                        val loser = getPlayerName(loserId)
-                        "Baron: $p1 i $p2 porównali karty. $winner wygrał, $loser odpada."
-                    }
-
-                    else -> "Baron: $p1 i $p2 porównali karty. Remis!"
-                }
-            }
-
-            is CardPlayedFeedback.HandmaidPlayed ->
-                "Gracz ${getPlayerName(feedback.protectedPlayerId)} zagrał Służącą i jest chroniony do następnej tury."
-
-            is CardPlayedFeedback.KingPlayed ->
-                "Król: ${getPlayerName(feedback.player1Id)} zamienił się kartami z graczem ${
-                    getPlayerName(
-                        feedback.player2Id
-                    )
-                }."
-
-            is CardPlayedFeedback.PrincePlayed -> {
-                val actor = getPlayerName(feedback.playerId)
-                val target = getPlayerName(feedback.targetId)
-                "$actor zagrał Księcia na $target. $target odrzuca kartę i dobiera nową."
-            }
-
-            is CardPlayedFeedback.PriestPlayed ->
-                "Kapłan: ${getPlayerName(feedback.viewingPlayerId)} podejrzał kartę gracza ${
-                    getPlayerName(
-                        feedback.targetPlayerId
-                    )
-                }."
-
-            is CardPlayedFeedback.SpyPlayed -> "Gracz ${getPlayerName(feedback.spyPlayerId)} zagrał Szpiega."
-
-            is CardPlayedFeedback.ChancellorPlayed -> "Gracz ${getPlayerName(feedback.playerId)} zagrał Kanclerza i wybiera karty."
-        }
-        return message
     }
 
     fun completeChancellorMove(cardToKeep: Card) {
@@ -377,7 +293,6 @@ class GameViewModel(
         }
     }
 
-
     private var connectionJob: kotlinx.coroutines.Job? = null
 
     fun connectToUpdates() {
@@ -390,7 +305,7 @@ class GameViewModel(
         }
     }
 
-    fun reset() {
+        fun reset() {
         viewModelScope.launch {
             try {
                 gameStorage.clearPlayerId()
@@ -407,23 +322,5 @@ class GameViewModel(
     private fun getPlayerName(playerId: Int): String {
         val player = _uiState.value.gameState?.players?.find { it.id == playerId }
         return player?.name ?: "Nieznany gracz"
-    }
-
-    private fun getCardName(cardNumber: Int): String {
-        return when (cardNumber) {
-            0 -> "Szpieg"
-            1 -> "Strażnik"
-            2 -> "Kapłan"
-            3 -> "Baron"
-            4 -> "Służąca"
-            5 -> "Książę"
-            6 -> "Kanclerz"
-            7 -> "Król"
-            8 -> "Hrabina"
-            9 -> "Księżniczka"
-            else -> {
-                "Nieznana karta: $cardNumber"
-            }
-        }
     }
 }

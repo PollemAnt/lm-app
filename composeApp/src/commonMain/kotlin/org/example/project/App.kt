@@ -38,10 +38,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import org.example.project.UI.screens.GameScreen
-import org.example.project.UI.screens.LoginScreen
-import org.example.project.UI.screens.Settings
-import org.example.project.UI.screens.viewModel.GameViewModel
+import org.example.project.ui.screens.GameScreen
+import org.example.project.ui.screens.LoginScreen
+import org.example.project.ui.screens.Settings
+import org.example.project.ui.screens.viewModel.GameViewModel
 import org.koin.compose.viewmodel.koinViewModel
 import ui.theme.AppColorScheme
 
@@ -81,7 +81,9 @@ fun App(viewModel: GameViewModel = koinViewModel()) {
                     }
                 },
                 onError = {
-                    // Rejoin failed, saved ID is cleared automatically inside GameViewModel.
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
                 }
             )
         } else {
@@ -170,56 +172,75 @@ fun App(viewModel: GameViewModel = koinViewModel()) {
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                NavHost(
-                    navController = navController,
-                    startDestination = Screen.Login.route,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    composable(Screen.Login.route) {
-                        LoginScreen(
-                            state = state,
-                            onJoin = { name ->
-                                 viewModel.join(name) {
-                                navController.navigate(Screen.Game.route)
-                                 }
-                            }
-                        )
-                    }
-
-                    composable(Screen.Game.route) {
-                        if (state.player == null) {
-                            LaunchedEffect(Unit) {
-                                navController.navigate(Screen.Login.route) {
-                                    popUpTo(Screen.Login.route) { inclusive = true }
-                                }
-
-                            }
-                            Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                                ) {
-                                    CircularProgressIndicator()
-                                    Text("Przekierowywanie do logowania...")
-                                }
-                            }
-                        } else {
-                            GameScreen(viewModel = viewModel)
+                if (state.isRestoringSession) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            CircularProgressIndicator()
+                            Text(
+                                text = "Wznawianie sesji gry...",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
                         }
                     }
-
-                    composable(Screen.Settings.route) {
-                        Settings(
-                            onReset = {
-                                viewModel.reset()
-                                navController.navigate(Screen.Login.route) {
-                                    popUpTo(0) { inclusive = true }
+                } else {
+                    NavHost(
+                        navController = navController,
+                        startDestination = Screen.Login.route,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        composable(Screen.Login.route) {
+                            LoginScreen(
+                                state = state,
+                                onJoin = { name ->
+                                     viewModel.join(name) {
+                                    navController.navigate(Screen.Game.route)
+                                     }
                                 }
+                            )
+                        }
+
+                        composable(Screen.Game.route) {
+                            if (state.player == null) {
+                                LaunchedEffect(Unit) {
+                                    navController.navigate(Screen.Login.route) {
+                                        popUpTo(Screen.Login.route) { inclusive = true }
+                                    }
+
+                                }
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                                    ) {
+                                        CircularProgressIndicator()
+                                        Text("Przekierowywanie do logowania...")
+                                    }
+                                }
+                            } else {
+                                GameScreen(viewModel = viewModel)
                             }
-                        )
+                        }
+
+                        composable(Screen.Settings.route) {
+                            Settings(
+                                onReset = {
+                                    viewModel.reset()
+                                    navController.navigate(Screen.Login.route) {
+                                        popUpTo(0) { inclusive = true }
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
