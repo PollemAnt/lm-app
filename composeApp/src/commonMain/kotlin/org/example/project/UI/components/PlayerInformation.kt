@@ -1,4 +1,4 @@
-package org.example.project.UI.components
+package org.example.project.ui.components
 
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable

@@ -8,8 +8,8 @@ import org.koin.dsl.module
 import org.example.NetworkClient
 import org.example.repository.GameRepository
 import org.example.repository.api.GameApi
-import org.example.project.UI.screens.viewModel.GameViewModel
-import org.example.project.UI.screens.viewModel.SettingsViewModel
+import org.example.project.ui.screens.viewModel.GameViewModel
+import org.example.project.ui.screens.viewModel.SettingsViewModel
 import org.example.project.Constants
 import org.example.storage.GameStorage
 

@@ -1,4 +1,4 @@
-package org.example.project.UI.gameAreas
+package org.example.project.ui.gameAreas
 
 
 import androidx.compose.foundation.background

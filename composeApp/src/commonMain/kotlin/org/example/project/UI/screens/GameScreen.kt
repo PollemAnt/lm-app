@@ -1,8 +1,8 @@
-package org.example.project.UI.screens
+package org.example.project.ui.screens
 
-import org.example.project.UI.gameAreas.OpponentsArea
-import org.example.project.UI.gameAreas.PlayerBoardView
-import org.example.project.UI.gameAreas.PlayerCardsSection
+import org.example.project.ui.gameAreas.OpponentsArea
+import org.example.project.ui.gameAreas.PlayerBoardView
+import org.example.project.ui.gameAreas.PlayerCardsSection
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,14 +28,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import org.example.shared.domain.Card
 import org.example.shared.domain.Player
-import org.example.project.UI.gameAreas.GameMessageBar
-import org.example.project.UI.gameAreas.canPlayOnOpponent
-import org.example.project.UI.screens.dialogs.ChancellorCardSelectionDialog
-import org.example.project.UI.screens.dialogs.NumberPickerDialog
-import org.example.project.UI.screens.dialogs.PriestRevealDialog
-import org.example.project.UI.screens.dialogs.RoundSummaryDialog
-import org.example.project.UI.screens.viewModel.GameUiEvent
-import org.example.project.UI.screens.viewModel.GameViewModel
+import org.example.project.ui.gameAreas.GameMessageBar
+import org.example.project.ui.gameAreas.canPlayOnOpponent
+import org.example.project.ui.screens.dialogs.ChancellorCardSelectionDialog
+import org.example.project.ui.screens.dialogs.NumberPickerDialog
+import org.example.project.ui.screens.dialogs.PriestRevealDialog
+import org.example.project.ui.screens.dialogs.RoundSummaryDialog
+import org.example.project.ui.screens.viewModel.GameUiEvent
+import org.example.project.ui.screens.viewModel.GameViewModel
 
 @Composable
 fun GameScreen(
